@@ -105,6 +105,12 @@ public class Hg38GenomeAnalysisServiceAutoConfiguration extends GenomeAnalysisSe
         return new RemmDao(remmTabixDataSource);
     }
 
+    @Bean("hg38ncboostDao")
+    @Override
+    public NCBoostDao ncboostDao() {
+        return new NCBoostDao(ncboostTabixDataSource);
+    }
+
     @Bean("hg38caddDao")
     @Override
     public CaddDao caddDao() {

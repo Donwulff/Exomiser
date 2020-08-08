@@ -49,6 +49,7 @@ public abstract class AbstractGenomeProperties implements GenomeProperties {
     private String dannSnvPath = "";
     private String dannInDelPath = "";
     private String remmPath = "";
+    private String ncboostPath = "";
     private String localFrequencyPath = "";
 
     // 'special' tabix datasource for quickly testing new pathogenicity data sources before plumbing them into the main
@@ -150,6 +151,14 @@ public abstract class AbstractGenomeProperties implements GenomeProperties {
 
     public void setRemmPath(String remmPath) {
         this.remmPath = remmPath;
+    }
+
+    public String getNCBoostPath() {
+        return ncboostPath;
+    }
+
+    public void setNCBoostPath(String ncboostPath) {
+        this.ncboostPath = ncboostPath;
     }
 
     public String getLocalFrequencyPath() {

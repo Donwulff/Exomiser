@@ -56,6 +56,7 @@ public class GenomeDataSources {
     private Path dannSnvPath;
     private Path dannIndelPath;
     private Path remmPath;
+    private Path ncboostPath;
 
     private Path testPathogenicityScorePath;
     /**
@@ -85,6 +86,7 @@ public class GenomeDataSources {
         Path dannSnvPath = resolvePathOrNullIfEmpty(genomeProperties.getDannSnvPath(), genomeDataResolver);
         Path dannIndelPath = resolvePathOrNullIfEmpty(genomeProperties.getDannInDelPath(), genomeDataResolver);
         Path remmPath = resolvePathOrNullIfEmpty(genomeProperties.getRemmPath(), genomeDataResolver);
+        Path ncboostPath = resolvePathOrNullIfEmpty(genomeProperties.getNCBoostPath(), genomeDataResolver);
 
         Path testPathogenicityPath = resolvePathOrNullIfEmpty(genomeProperties.getTestPathogenicityScorePath(), genomeDataResolver);
 
@@ -99,6 +101,7 @@ public class GenomeDataSources {
                 .dannSnvPath(dannSnvPath)
                 .dannIndelPath(dannIndelPath)
                 .remmPath(remmPath)
+                .ncboostPath(ncboostPath)
                 .testPathogenicityScorePath(testPathogenicityPath)
                 .build();
     }
@@ -155,6 +158,7 @@ public class GenomeDataSources {
         this.dannSnvPath = builder.dannSnvPath;
         this.dannIndelPath = builder.dannIndelPath;
         this.remmPath = builder.remmPath;
+        this.ncboostPath = builder.ncboostPath;
         this.testPathogenicityScorePath = builder.testPathogenicityPath;
     }
 
@@ -202,6 +206,10 @@ public class GenomeDataSources {
         return Optional.ofNullable(remmPath);
     }
 
+    public Optional<Path> getNCBoostPath() {
+        return Optional.ofNullable(ncboostPath);
+    }
+
     public Optional<Path> getTestPathogenicityPath() {
         return Optional.ofNullable(testPathogenicityScorePath);
     }
@@ -219,12 +227,13 @@ public class GenomeDataSources {
                 Objects.equals(caddIndelPath, that.caddIndelPath) &&
                 Objects.equals(dannSnvPath, that.dannSnvPath) &&
                 Objects.equals(dannIndelPath, that.dannIndelPath) &&
-                Objects.equals(remmPath, that.remmPath);
+                Objects.equals(remmPath, that.remmPath) &&
+                Objects.equals(ncboostPath, that.ncboostPath);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(transcriptFilePath, mvStorePath, genomeDataSource, localFrequencyPath, caddSnvPath, caddIndelPath, dannSnvPath, dannIndelPath, remmPath);
+        return Objects.hash(transcriptFilePath, mvStorePath, genomeDataSource, localFrequencyPath, caddSnvPath, caddIndelPath, dannSnvPath, dannIndelPath, remmPath, ncboostPath);
     }
 
     @Override
@@ -239,6 +248,7 @@ public class GenomeDataSources {
                 ", dannSnvPath=" + dannSnvPath +
                 ", dannIndelPath=" + dannIndelPath +
                 ", remmPath=" + remmPath +
+                ", ncboostPath=" + ncboostPath +
                 '}';
     }
 
@@ -260,6 +270,7 @@ public class GenomeDataSources {
         private Path dannSnvPath = null;
         private Path dannIndelPath = null;
         private Path remmPath = null;
+        private Path ncboostPath = null;
         private Path testPathogenicityPath = null;
 
         public Builder transcriptFilePath(Path transcriptFilePath) {
@@ -332,6 +343,13 @@ public class GenomeDataSources {
          */
         public Builder remmPath(Path remmPath) {
             this.remmPath = remmPath;
+            return this;
+        }
+
+        /**
+         */
+        public Builder ncboostPath(Path ncboostPath) {
+            this.ncboostPath = ncboostPath;
             return this;
         }
 

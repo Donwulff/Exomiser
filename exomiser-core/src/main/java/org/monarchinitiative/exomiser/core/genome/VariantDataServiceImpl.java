@@ -61,6 +61,7 @@ public class VariantDataServiceImpl implements VariantDataService {
     private final PathogenicityDao caddDao;
     private final PathogenicityDao dannDao;
     private final PathogenicityDao remmDao;
+    private final PathogenicityDao ncboostDao;
     private final PathogenicityDao testPathScoreDao;
 
     private VariantDataServiceImpl(Builder builder) {
@@ -74,6 +75,7 @@ public class VariantDataServiceImpl implements VariantDataService {
         this.caddDao = builder.caddDao;
         this.dannDao = builder.dannDao;
         this.remmDao = builder.remmDao;
+        this.ncboostDao = builder.ncboostDao;
         this.testPathScoreDao = builder.testPathScoreDao;
     }
 
@@ -139,6 +141,11 @@ public class VariantDataServiceImpl implements VariantDataService {
     private List<PathogenicityData> getOptionalPathogenicityData(Variant variant, Set<PathogenicitySource> pathogenicitySources) {
         List<PathogenicityDao> daosToQuery = new ArrayList<>();
         // REMM is trained on non-coding regulatory bits of the genome, this outperforms CADD for non-coding variants
+        if (pathogenicitySources.contains(PathogenicitySource.NCBOOST) && variant.isNonCodingVariant()) {
+            daosToQuery.add(ncboostDao);
+        }
+
+        // REMM is trained on non-coding regulatory bits of the genome, this outperforms CADD for non-coding variants
         if (pathogenicitySources.contains(PathogenicitySource.REMM) && variant.isNonCodingVariant()) {
             daosToQuery.add(remmDao);
         }
@@ -178,6 +185,7 @@ public class VariantDataServiceImpl implements VariantDataService {
         private PathogenicityDao caddDao;
         private PathogenicityDao dannDao;
         private PathogenicityDao remmDao;
+        private PathogenicityDao ncboostDao;
         private PathogenicityDao testPathScoreDao;
 
         public Builder variantWhiteList(VariantWhiteList variantWhiteList) {
@@ -212,6 +220,11 @@ public class VariantDataServiceImpl implements VariantDataService {
 
         public Builder remmDao(PathogenicityDao remmDao) {
             this.remmDao = remmDao;
+            return this;
+        }
+
+        public Builder ncboostDao(PathogenicityDao ncboostDao) {
+            this.ncboostDao = ncboostDao;
             return this;
         }
 

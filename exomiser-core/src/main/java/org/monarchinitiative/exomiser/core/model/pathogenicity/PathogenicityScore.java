@@ -55,6 +55,8 @@ public interface PathogenicityScore extends Comparable<PathogenicityScore> {
                 return DannScore.of(score);
             case REMM:
                 return RemmScore.of(score);
+            case NCBOOST:
+                return NCBoostScore.of(score);
             case REVEL:
                 return RevelScore.of(score);
             case MPC:

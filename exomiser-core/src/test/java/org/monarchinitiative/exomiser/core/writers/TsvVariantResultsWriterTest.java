@@ -64,7 +64,7 @@ public class TsvVariantResultsWriterTest {
     private final TsvVariantResultsWriter instance = new TsvVariantResultsWriter();
 
     private static final String VARIANT_DETAILS_HEADER = "#CHROM\tPOS\tREF\tALT\tQUAL\tFILTER\tGENOTYPE\tCOVERAGE\tFUNCTIONAL_CLASS\tHGVS\tEXOMISER_GENE\t";
-    private static final String PATHOGENICITY_SCORES_HEADER = "CADD(>0.483)\tDANN(>0.483)\tPOLYPHEN(>0.956|>0.446)\tMUTATIONTASTER(>0.94)\tSIFT(<0.06)\tREMM\t";
+    private static final String PATHOGENICITY_SCORES_HEADER = "CADD(>0.483)\tDANN(>0.483)\tPOLYPHEN(>0.956|>0.446)\tMUTATIONTASTER(>0.94)\tSIFT(<0.06)\tREMM\tNCBOOST\t";
     private static final String FREQUENCY_DATA_HEADER = "DBSNP_ID\tMAX_FREQUENCY\tDBSNP_FREQUENCY\t"
             + "EVS_EA_FREQUENCY\tEVS_AA_FREQUENCY\t"
             + "EXAC_AFR_FREQ\tEXAC_AMR_FREQ\tEXAC_EAS_FREQ\tEXAC_FIN_FREQ\tEXAC_NFE_FREQ\tEXAC_SAS_FREQ\tEXAC_OTH_FREQ\t";
@@ -77,7 +77,7 @@ public class TsvVariantResultsWriterTest {
     private static final String PASS_VARIANT_DETAILS = "10\t123256214\tA\tG\t2.2\tPASS\t0/1\t0\tmissense_variant\tFGFR2:uc021pzz.1:c.1695G>C:p.(Glu565Asp)\tFGFR2";
     private static final String CONTRIBUTING_VARIANT_DETAILS = "10\t123256215\tT\tG\t2.2\tPASS\t0/1\t0\tmissense_variant\tFGFR2:uc021pzz.1:c.1694A>C:p.(Glu565Ala)\tFGFR2";
 
-    private static final String NO_PATH_SCORES = "\t.\t.\t.\t.\t.\t.";
+    private static final String NO_PATH_SCORES = "\t.\t.\t.\t.\t.\t.\t.";
     private static final String NO_FREQUENCY_DATA = "\t.\t0.0\t.\t.\t.\t.\t.\t.\t.\t.\t.\t.";
     private static final String FAIL_VARIANT_EXOMISER_SCORES = "\t1.0\t0.0\t0.0\t0.0";
     private static final String PASS_VARIANT_EXOMISER_SCORES = "\t0.89\t0.0\t0.0\t0.0";
@@ -87,8 +87,8 @@ public class TsvVariantResultsWriterTest {
     private static final String NON_CONTRIBUTING_VARIANT_FIELD = "\t.";
 
     private static final String FAIL_VARIANT_LINE = FAIL_VARIANT_DETAILS + NO_PATH_SCORES + NO_FREQUENCY_DATA + FAIL_VARIANT_EXOMISER_SCORES + NON_CONTRIBUTING_VARIANT_FIELD + "\n";
-    private static final String PASS_VARIANT_LINE = PASS_VARIANT_DETAILS + "\t.\t.\t0.89\t.\t.\t." + NO_FREQUENCY_DATA + PASS_VARIANT_EXOMISER_SCORES + NON_CONTRIBUTING_VARIANT_FIELD + "\n";
-    private static final String CONTRIBUTING_VARIANT_LINE = CONTRIBUTING_VARIANT_DETAILS + "\t.\t.\t1.0\t.\t.\t." + NO_FREQUENCY_DATA + CONTRIBUTING_VARIANT_EXOMISER_SCORES + CONTRIBUTING_VARIANT_FIELD + "\n";
+    private static final String PASS_VARIANT_LINE = PASS_VARIANT_DETAILS + "\t.\t.\t0.89\t.\t.\t.\t." + NO_FREQUENCY_DATA + PASS_VARIANT_EXOMISER_SCORES + NON_CONTRIBUTING_VARIANT_FIELD + "\n";
+    private static final String CONTRIBUTING_VARIANT_LINE = CONTRIBUTING_VARIANT_DETAILS + "\t.\t.\t1.0\t.\t.\t.\t." + NO_FREQUENCY_DATA + CONTRIBUTING_VARIANT_EXOMISER_SCORES + CONTRIBUTING_VARIANT_FIELD + "\n";
 
     private final Builder settingsBuilder = OutputSettings.builder()
             .outputFormats(EnumSet.of(OutputFormat.TSV_VARIANT));

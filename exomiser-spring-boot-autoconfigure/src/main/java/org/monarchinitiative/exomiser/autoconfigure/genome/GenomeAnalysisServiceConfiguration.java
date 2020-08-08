@@ -54,6 +54,8 @@ public interface GenomeAnalysisServiceConfiguration {
 
     public FrequencyDao localFrequencyDao();
 
+    public PathogenicityDao ncboostDao();
+
     public PathogenicityDao remmDao();
 
     public PathogenicityDao caddDao();

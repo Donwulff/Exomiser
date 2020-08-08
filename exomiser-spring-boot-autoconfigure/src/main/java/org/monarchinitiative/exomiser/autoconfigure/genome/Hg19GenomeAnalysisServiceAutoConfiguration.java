@@ -99,6 +99,12 @@ public class Hg19GenomeAnalysisServiceAutoConfiguration extends GenomeAnalysisSe
         return new LocalFrequencyDao(localFrequencyTabixDataSource);
     }
 
+    @Bean("hg19ncboostDao")
+    @Override
+    public NCBoostDao ncboostDao() {
+        return new NCBoostDao(ncboostTabixDataSource);
+    }
+
     @Bean("hg19remmDao")
     @Override
     public RemmDao remmDao() {

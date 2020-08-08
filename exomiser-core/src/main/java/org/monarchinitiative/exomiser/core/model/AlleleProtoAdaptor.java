@@ -89,6 +89,7 @@ public class AlleleProtoAdaptor {
             .put("CADD", CADD)
             .put("DANN", DANN)
             .put("REMM", REMM)
+            .put("NCBOOST", NCBOOST)
             .put("REVEL", REVEL)
             .put("MCAP", M_CAP)
             .put("MPC", MPC)

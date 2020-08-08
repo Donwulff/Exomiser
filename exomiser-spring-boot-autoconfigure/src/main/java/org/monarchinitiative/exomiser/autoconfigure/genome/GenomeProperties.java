@@ -83,6 +83,10 @@ interface GenomeProperties {
 
     public void setRemmPath(String remmPath);
 
+    public String getNCBoostPath();
+
+    public void setNCBoostPath(String ncboostPath);
+
     public String getLocalFrequencyPath();
 
     public void setLocalFrequencyPath(String localFrequencyPath);

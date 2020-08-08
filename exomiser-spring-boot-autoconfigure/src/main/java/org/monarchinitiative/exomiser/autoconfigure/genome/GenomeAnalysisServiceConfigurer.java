@@ -60,6 +60,7 @@ public abstract class GenomeAnalysisServiceConfigurer implements GenomeAnalysisS
     protected final TabixDataSource dannSnvTabixDataSource;
     protected final TabixDataSource dannIndelTabixDataSource;
     protected final TabixDataSource remmTabixDataSource;
+    protected final TabixDataSource ncboostTabixDataSource;
 
     //Super-optional TabixDataSource for testing new PathogenicityScores
     protected final TabixDataSource testPathogenicitySource;
@@ -81,6 +82,7 @@ public abstract class GenomeAnalysisServiceConfigurer implements GenomeAnalysisS
         this.dannSnvTabixDataSource = genomeDataSourceLoader.getDannSnvTabixDataSource();
         this.dannIndelTabixDataSource = genomeDataSourceLoader.getDannIndelTabixDataSource();
         this.remmTabixDataSource = genomeDataSourceLoader.getRemmTabixDataSource();
+        this.ncboostTabixDataSource = genomeDataSourceLoader.getNCBoostTabixDataSource();
         this.testPathogenicitySource = genomeDataSourceLoader.getTestPathogenicityTabixDataSource();
     }
 
@@ -112,6 +114,7 @@ public abstract class GenomeAnalysisServiceConfigurer implements GenomeAnalysisS
                 .remmDao(remmDao())
                 .caddDao(caddDao())
                 .dannDao(dannDao())
+                .ncboostDao(ncboostDao())
                 .testPathScoreDao(testPathScoreDao())
                 .variantWhiteList(variantWhiteList)
                 .build();
