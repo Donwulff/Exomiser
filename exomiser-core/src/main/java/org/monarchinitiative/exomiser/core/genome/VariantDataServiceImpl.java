@@ -59,6 +59,7 @@ public class VariantDataServiceImpl implements VariantDataService {
     // Optional data sources
     private final FrequencyDao localFrequencyDao;
     private final PathogenicityDao caddDao;
+    private final PathogenicityDao dannDao;
     private final PathogenicityDao remmDao;
     private final PathogenicityDao testPathScoreDao;
 
@@ -71,6 +72,7 @@ public class VariantDataServiceImpl implements VariantDataService {
 
         this.localFrequencyDao = builder.localFrequencyDao;
         this.caddDao = builder.caddDao;
+        this.dannDao = builder.dannDao;
         this.remmDao = builder.remmDao;
         this.testPathScoreDao = builder.testPathScoreDao;
     }
@@ -146,6 +148,11 @@ public class VariantDataServiceImpl implements VariantDataService {
             daosToQuery.add(caddDao);
         }
 
+        // CADD does all of it although is not as good as REMM for the non-coding regions.
+        if (pathogenicitySources.contains(PathogenicitySource.DANN)) {
+            daosToQuery.add(dannDao);
+        }
+
         if (pathogenicitySources.contains(PathogenicitySource.TEST)) {
             daosToQuery.add(testPathScoreDao);
         }
@@ -169,6 +176,7 @@ public class VariantDataServiceImpl implements VariantDataService {
         private FrequencyDao localFrequencyDao;
 
         private PathogenicityDao caddDao;
+        private PathogenicityDao dannDao;
         private PathogenicityDao remmDao;
         private PathogenicityDao testPathScoreDao;
 
@@ -194,6 +202,11 @@ public class VariantDataServiceImpl implements VariantDataService {
 
         public Builder caddDao(PathogenicityDao caddDao) {
             this.caddDao = caddDao;
+            return this;
+        }
+
+        public Builder dannDao(PathogenicityDao dannDao) {
+            this.dannDao = dannDao;
             return this;
         }
 

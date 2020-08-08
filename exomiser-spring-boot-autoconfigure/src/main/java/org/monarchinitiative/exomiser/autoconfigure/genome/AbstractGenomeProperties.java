@@ -46,6 +46,8 @@ public abstract class AbstractGenomeProperties implements GenomeProperties {
     // Optional tabix variant data
     private String caddSnvPath = "";
     private String caddInDelPath = "";
+    private String dannSnvPath = "";
+    private String dannInDelPath = "";
     private String remmPath = "";
     private String localFrequencyPath = "";
 
@@ -124,6 +126,22 @@ public abstract class AbstractGenomeProperties implements GenomeProperties {
 
     public void setCaddInDelPath(String caddInDelPath) {
         this.caddInDelPath = caddInDelPath;
+    }
+
+    public String getDannSnvPath() {
+        return dannSnvPath;
+    }
+
+    public void setDannSnvPath(String dannSnvPath) {
+        this.dannSnvPath = dannSnvPath;
+    }
+
+    public String getDannInDelPath() {
+        return dannInDelPath;
+    }
+
+    public void setDannInDelPath(String dannInDelPath) {
+        this.dannInDelPath = dannInDelPath;
     }
 
     public String getRemmPath() {

@@ -51,6 +51,8 @@ public interface PathogenicityScore extends Comparable<PathogenicityScore> {
                 return SiftScore.of(score);
             case CADD:
                 return CaddScore.of(score);
+            case DANN:
+                return DannScore.of(score);
             case REMM:
                 return RemmScore.of(score);
             case REVEL:

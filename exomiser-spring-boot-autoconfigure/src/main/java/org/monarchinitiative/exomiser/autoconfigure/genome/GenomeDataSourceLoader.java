@@ -61,6 +61,8 @@ public class GenomeDataSourceLoader {
     private final TabixDataSource localFrequencyTabixDataSource;
     private final TabixDataSource caddSnvTabixDataSource;
     private final TabixDataSource caddIndelTabixDataSource;
+    private final TabixDataSource dannSnvTabixDataSource;
+    private final TabixDataSource dannIndelTabixDataSource;
     private final TabixDataSource remmTabixDataSource;
     private final TabixDataSource testPathogenicityTabixDataSource;
 
@@ -84,6 +86,8 @@ public class GenomeDataSourceLoader {
         this.localFrequencyTabixDataSource = getTabixDataSourceOrDefault("LOCAL", genomeDataSources.getLocalFrequencyPath());
         this.caddSnvTabixDataSource = getTabixDataSourceOrDefault("CADD snv", genomeDataSources.getCaddSnvPath());
         this.caddIndelTabixDataSource = getTabixDataSourceOrDefault("CADD InDel", genomeDataSources.getCaddIndelPath());
+        this.dannSnvTabixDataSource = getTabixDataSourceOrDefault("DANN snv", genomeDataSources.getDannSnvPath());
+        this.dannIndelTabixDataSource = getTabixDataSourceOrDefault("DANN InDel", genomeDataSources.getDannIndelPath());
         this.remmTabixDataSource = getTabixDataSourceOrDefault("REMM", genomeDataSources.getRemmPath());
         this.testPathogenicityTabixDataSource = getTabixDataSourceOrDefault("TEST", genomeDataSources.getTestPathogenicityPath());
     }
@@ -167,6 +171,14 @@ public class GenomeDataSourceLoader {
         return caddIndelTabixDataSource;
     }
 
+    public TabixDataSource getDannSnvTabixDataSource() {
+        return dannSnvTabixDataSource;
+    }
+
+    public TabixDataSource getDannIndelTabixDataSource() {
+        return dannIndelTabixDataSource;
+    }
+
     public TabixDataSource getRemmTabixDataSource() {
         return remmTabixDataSource;
     }
@@ -186,12 +198,15 @@ public class GenomeDataSourceLoader {
                 Objects.equals(localFrequencyTabixDataSource, that.localFrequencyTabixDataSource) &&
                 Objects.equals(caddSnvTabixDataSource, that.caddSnvTabixDataSource) &&
                 Objects.equals(caddIndelTabixDataSource, that.caddIndelTabixDataSource) &&
+                Objects.equals(dannSnvTabixDataSource, that.dannSnvTabixDataSource) &&
+                Objects.equals(dannIndelTabixDataSource, that.dannIndelTabixDataSource) &&
                 Objects.equals(remmTabixDataSource, that.remmTabixDataSource);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(dataSource, jannovarData, mvStore, localFrequencyTabixDataSource, caddSnvTabixDataSource, caddIndelTabixDataSource, remmTabixDataSource);
+        return Objects.hash(dataSource, jannovarData, mvStore, localFrequencyTabixDataSource, caddSnvTabixDataSource, caddIndelTabixDataSource, 
+                            dannSnvTabixDataSource, dannIndelTabixDataSource, remmTabixDataSource);
     }
 
 }

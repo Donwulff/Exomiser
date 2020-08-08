@@ -87,6 +87,7 @@ public class AlleleProtoAdaptor {
             .put("MUT_TASTER", MUTATION_TASTER)
             .put("SIFT", SIFT)
             .put("CADD", CADD)
+            .put("DANN", DANN)
             .put("REMM", REMM)
             .put("REVEL", REVEL)
             .put("MCAP", M_CAP)

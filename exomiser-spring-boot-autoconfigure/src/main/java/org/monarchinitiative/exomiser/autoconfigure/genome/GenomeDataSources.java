@@ -53,6 +53,8 @@ public class GenomeDataSources {
     private Path localFrequencyPath;
     private Path caddSnvPath;
     private Path caddIndelPath;
+    private Path dannSnvPath;
+    private Path dannIndelPath;
     private Path remmPath;
 
     private Path testPathogenicityScorePath;
@@ -80,6 +82,8 @@ public class GenomeDataSources {
         Path localFreqPath = resolvePathOrNullIfEmpty(genomeProperties.getLocalFrequencyPath(), genomeDataResolver);
         Path caddSnvPath = resolvePathOrNullIfEmpty(genomeProperties.getCaddSnvPath(), genomeDataResolver);
         Path caddIndelPath = resolvePathOrNullIfEmpty(genomeProperties.getCaddInDelPath(), genomeDataResolver);
+        Path dannSnvPath = resolvePathOrNullIfEmpty(genomeProperties.getDannSnvPath(), genomeDataResolver);
+        Path dannIndelPath = resolvePathOrNullIfEmpty(genomeProperties.getDannInDelPath(), genomeDataResolver);
         Path remmPath = resolvePathOrNullIfEmpty(genomeProperties.getRemmPath(), genomeDataResolver);
 
         Path testPathogenicityPath = resolvePathOrNullIfEmpty(genomeProperties.getTestPathogenicityScorePath(), genomeDataResolver);
@@ -92,6 +96,8 @@ public class GenomeDataSources {
                 .localFrequencyPath(localFreqPath)
                 .caddSnvPath(caddSnvPath)
                 .caddIndelPath(caddIndelPath)
+                .dannSnvPath(dannSnvPath)
+                .dannIndelPath(dannIndelPath)
                 .remmPath(remmPath)
                 .testPathogenicityScorePath(testPathogenicityPath)
                 .build();
@@ -146,6 +152,8 @@ public class GenomeDataSources {
         this.localFrequencyPath = builder.localFrequencyPath;
         this.caddSnvPath = builder.caddSnvPath;
         this.caddIndelPath = builder.caddIndelPath;
+        this.dannSnvPath = builder.dannSnvPath;
+        this.dannIndelPath = builder.dannIndelPath;
         this.remmPath = builder.remmPath;
         this.testPathogenicityScorePath = builder.testPathogenicityPath;
     }
@@ -182,6 +190,14 @@ public class GenomeDataSources {
         return Optional.ofNullable(caddIndelPath);
     }
 
+    public Optional<Path> getDannSnvPath() {
+        return Optional.ofNullable(dannSnvPath);
+    }
+
+    public Optional<Path> getDannIndelPath() {
+        return Optional.ofNullable(dannIndelPath);
+    }
+
     public Optional<Path> getRemmPath() {
         return Optional.ofNullable(remmPath);
     }
@@ -201,12 +217,14 @@ public class GenomeDataSources {
                 Objects.equals(localFrequencyPath, that.localFrequencyPath) &&
                 Objects.equals(caddSnvPath, that.caddSnvPath) &&
                 Objects.equals(caddIndelPath, that.caddIndelPath) &&
+                Objects.equals(dannSnvPath, that.dannSnvPath) &&
+                Objects.equals(dannIndelPath, that.dannIndelPath) &&
                 Objects.equals(remmPath, that.remmPath);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(transcriptFilePath, mvStorePath, genomeDataSource, localFrequencyPath, caddSnvPath, caddIndelPath, remmPath);
+        return Objects.hash(transcriptFilePath, mvStorePath, genomeDataSource, localFrequencyPath, caddSnvPath, caddIndelPath, dannSnvPath, dannIndelPath, remmPath);
     }
 
     @Override
@@ -218,6 +236,8 @@ public class GenomeDataSources {
                 ", localFrequencyPath=" + localFrequencyPath +
                 ", caddSnvPath=" + caddSnvPath +
                 ", caddIndelPath=" + caddIndelPath +
+                ", dannSnvPath=" + dannSnvPath +
+                ", dannIndelPath=" + dannIndelPath +
                 ", remmPath=" + remmPath +
                 '}';
     }
@@ -237,6 +257,8 @@ public class GenomeDataSources {
         private Path localFrequencyPath = null;
         private Path caddSnvPath = null;
         private Path caddIndelPath = null;
+        private Path dannSnvPath = null;
+        private Path dannIndelPath = null;
         private Path remmPath = null;
         private Path testPathogenicityPath = null;
 
@@ -286,6 +308,20 @@ public class GenomeDataSources {
          */
         public Builder caddIndelPath(Path caddIndelPath) {
             this.caddIndelPath = caddIndelPath;
+            return this;
+        }
+
+        /**
+         */
+        public Builder dannSnvPath(Path dannSnvPath) {
+            this.dannSnvPath = dannSnvPath;
+            return this;
+        }
+
+        /**
+         */
+        public Builder dannIndelPath(Path dannIndelPath) {
+            this.dannIndelPath = dannIndelPath;
             return this;
         }
 

@@ -42,8 +42,10 @@ public enum PathogenicitySource {
     SIFT,
     // http://cadd.gs.washington.edu/info
     CADD,
+    DANN,
     // https://charite.github.io/software-remm-score.html
     REMM,
+    NCBOOST,
     // https://sites.google.com/site/revelgenomics/
     // “REVEL: An ensemble method for predicting the pathogenicity of rare missense variants.”  American Journal of Human Genetics 2016; 99(4):877-885
     // http://dx.doi.org/10.1016/j.ajhg.2016.08.016

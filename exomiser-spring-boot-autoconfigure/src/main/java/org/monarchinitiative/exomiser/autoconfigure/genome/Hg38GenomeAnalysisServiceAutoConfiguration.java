@@ -111,6 +111,12 @@ public class Hg38GenomeAnalysisServiceAutoConfiguration extends GenomeAnalysisSe
         return new CaddDao(caddIndelTabixDataSource, caddSnvTabixDataSource);
     }
 
+    @Bean("hg38dannDao")
+    @Override
+    public DannDao dannDao() {
+        return new DannDao(dannIndelTabixDataSource, dannSnvTabixDataSource);
+    }
+
     @Bean("hg38testPathDao")
     @Override
     public PathogenicityDao testPathScoreDao() {

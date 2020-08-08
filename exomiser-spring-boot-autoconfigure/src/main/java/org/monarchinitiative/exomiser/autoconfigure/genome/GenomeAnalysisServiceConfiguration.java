@@ -58,6 +58,8 @@ public interface GenomeAnalysisServiceConfiguration {
 
     public PathogenicityDao caddDao();
 
+    public PathogenicityDao dannDao();
+
     public PathogenicityDao testPathScoreDao();
 
 }

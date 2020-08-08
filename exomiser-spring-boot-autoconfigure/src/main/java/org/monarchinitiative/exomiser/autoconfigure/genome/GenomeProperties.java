@@ -71,6 +71,14 @@ interface GenomeProperties {
 
     public void setCaddInDelPath(String caddInDelPath);
 
+    public String getDannSnvPath();
+
+    public void setDannSnvPath(String dannSnvPath);
+
+    public String getDannInDelPath();
+
+    public void setDannInDelPath(String dannInDelPath);
+
     public String getRemmPath();
 
     public void setRemmPath(String remmPath);

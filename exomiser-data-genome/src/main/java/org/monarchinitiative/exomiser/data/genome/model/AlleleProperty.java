@@ -67,7 +67,9 @@ public enum AlleleProperty {
     POLYPHEN,
     MUT_TASTER,
     CADD,
+    DANN,
     REMM,
+    NCBOOST,
     // Second generation scores
     REVEL,
     MCAP,

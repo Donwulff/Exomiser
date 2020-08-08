@@ -111,6 +111,12 @@ public class Hg19GenomeAnalysisServiceAutoConfiguration extends GenomeAnalysisSe
         return new CaddDao(caddIndelTabixDataSource, caddSnvTabixDataSource);
     }
 
+    @Bean("hg19dannDao")
+    @Override
+    public DannDao dannDao() {
+        return new DannDao(dannIndelTabixDataSource, dannSnvTabixDataSource);
+    }
+
     @Bean("hg19testPathDao")
     @Override
     public PathogenicityDao testPathScoreDao() {
