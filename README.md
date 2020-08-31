@@ -1,3 +1,34 @@
+This fork has:
+ - Support for extra CADD style pathogenicity source with indels and pathogenicity conversion function. This is currently configured for [DANN](https://pubmed.ncbi.nlm.nih.gov/25338716/) [data download](https://cbcl.ics.uci.edu/public_data/DANN/). Enabling DANN pathogenicity source requires setting ```exomiser.hg19.dann-snv-path``` to downloaded DANN tabix file and ```exomiser.hg19.dann-in-del-path``` to an empty tabix file in ```application.properties```.
+ - Support for extra ReMM style pathgenicity source with indels given highest spanned pathogenicity score. This has been currently configurred for [NCBoost](https://pubmed.ncbi.nlm.nih.gov/30744685/) [data download](https://github.com/RausellLab/NCBoost). Enabling NCBOOST pathogenicity source requires setting ```exomiser.hg19.ncboost-path``` to downloaded NCBoost tabix file in ```application.properties```.
+ - Direct links to [SNPedia](https://www.snpedia.com/) for dbSNP recognized variants and [VarSome](https://varsome.com/) for all variants in the HTML report for collaboration and literature retrieval.
+ - VCF file filter parameter is displayed in the HTML report, allowing provisional analysis of low quality/filtered variants.
+ - Torrent files for downloading some of the resources in the data subdirectory.
+
+Note:
+* DANN has not been updated since publication in 2015, while [CADD 1.6](https://cadd.gs.washington.edu/static/ReleaseNotes_CADD_v1.6.pdf) in 2020 has added MMSplice and SpliceAI deep learning framework annotations into its model, addressing [criticism](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5097698/) about its performance with non-coding (Genomiser) variation.
+* Calculating missing NCBoost scores requires annovar, whish is only available to academic users. Pre-computer values cover only non-coding positions one kilobase from transcription start or end sites of known genes.
+* HTML hyperlinks (including prior Exomiser hyperlinks) may reveal information about which variants are being investigated to outside observers, viewers are responsible for ensuring this does not violate any applicable policies or laws.
+* Enabling multiple pathogenicity sources will bias the results towards pathogenicity over gene association due to multiple testing with different pathogenicity algorithms, as Exomiser will consider the highest available pathogenicity score.
+
+Simple analysis of a typical whole genome sequence shows that the distribution of all SNV'sannotated using PASS mode is skewed between the pathogenicity sources. However, since this skewedness predictably depends on the functional class of the variant and most pathogenicity sources don't cover all variants, it's not altogether clear if and how they should be calibrated.
+```df<-read.delim("whole-genome-PASS.variants.tsv",sep="\t",header=TRUE,
+               colClasses=c(REF="character",ALT="character",FUNCTIONAL_CLASS="character",
+                            CADD..0.483.="numeric", DANN..0.483.="numeric",
+                            POLYPHEN..0.956..0.446.="numeric", MUTATIONTASTER..0.94.="numeric",
+                            SIFT..0.06.="numeric",REMM="numeric",NCBOOST="numeric"),
+               na.strings=".");
+for(fc in unique(df$FUNCTIONAL_CLASS)) {
+    ct<-nrow(df[df$FUNCTIONAL_CLASS==fc,]);
+    print(fc); print(ct);
+    if(ct) {
+        print(summary(df[df$FUNCTIONAL_CLASS==fc&nchar(df$ALT)==1&nchar(df$REF)==1,
+                      c("CADD..0.483.","DANN..0.483.","POLYPHEN..0.956..0.446.",
+                        "MUTATIONTASTER..0.94.","SIFT..0.06.","REMM","NCBOOST")]))
+    }
+}
+```
+
 The Exomiser - A Tool to Annotate and Prioritize Exome Variants
 ===============================================================
 
