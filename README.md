@@ -12,7 +12,8 @@ Note:
 * Enabling multiple pathogenicity sources will bias the results towards pathogenicity over gene association due to multiple testing with different pathogenicity algorithms, as Exomiser will consider the highest available pathogenicity score.
 
 Simple analysis of a typical whole genome sequence shows that the distribution of all SNV'sannotated using PASS mode is skewed between the pathogenicity sources. However, since this skewedness predictably depends on the functional class of the variant and most pathogenicity sources don't cover all variants, it's not altogether clear if and how they should be calibrated.
-```df<-read.delim("whole-genome-PASS.variants.tsv",sep="\t",header=TRUE,
+```
+df<-read.delim("whole-genome-PASS.variants.tsv",sep="\t",header=TRUE,
                colClasses=c(REF="character",ALT="character",FUNCTIONAL_CLASS="character",
                             CADD..0.483.="numeric", DANN..0.483.="numeric",
                             POLYPHEN..0.956..0.446.="numeric", MUTATIONTASTER..0.94.="numeric",
