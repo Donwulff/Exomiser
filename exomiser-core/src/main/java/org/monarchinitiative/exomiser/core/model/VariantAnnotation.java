@@ -29,6 +29,7 @@ import java.util.Objects;
 
 /**
  * Simple immutable data class to represent annotations for a variant.
+ * VcfFilter is on annotation level, although it may vary between samples.
  *
  * @author Jules Jacobsen <j.jacobsen@qmul.ac.uk>
  */
@@ -43,6 +44,7 @@ public class VariantAnnotation implements Variant {
     private final String ref;
     private final String alt;
 
+    private final String vcfFilter;
     private final String geneSymbol;
     private final String geneId;
     private final VariantEffect variantEffect;
@@ -55,6 +57,7 @@ public class VariantAnnotation implements Variant {
         this.position = builder.position;
         this.ref = builder.ref;
         this.alt = builder.alt;
+        this.vcfFilter = builder.vcfFilter;
         this.geneSymbol = builder.geneSymbol;
         this.geneId = builder.geneId;
         this.variantEffect = builder.variantEffect;
@@ -83,6 +86,10 @@ public class VariantAnnotation implements Variant {
 
     public String getAlt() {
         return alt;
+    }
+
+    public String getVcfFilter() {
+        return vcfFilter;
     }
 
     public String getGeneSymbol() {
@@ -121,6 +128,7 @@ public class VariantAnnotation implements Variant {
                 Objects.equals(chromosomeName, that.chromosomeName) &&
                 Objects.equals(ref, that.ref) &&
                 Objects.equals(alt, that.alt) &&
+                Objects.equals(vcfFilter, that.vcfFilter) &&
                 Objects.equals(geneSymbol, that.geneSymbol) &&
                 Objects.equals(geneId, that.geneId) &&
                 variantEffect == that.variantEffect &&
@@ -129,7 +137,7 @@ public class VariantAnnotation implements Variant {
 
     @Override
     public int hashCode() {
-        return Objects.hash(genomeAssembly, chromosome, chromosomeName, position, ref, alt, geneSymbol, geneId, variantEffect, annotations);
+        return Objects.hash(genomeAssembly, chromosome, chromosomeName, position, ref, alt, vcfFilter, geneSymbol, geneId, variantEffect, annotations);
     }
 
     @Override
@@ -141,6 +149,7 @@ public class VariantAnnotation implements Variant {
                 ", position=" + position +
                 ", ref='" + ref + '\'' +
                 ", alt='" + alt + '\'' +
+                ", vcfFilter='" + vcfFilter + '\'' +
                 ", geneSymbol='" + geneSymbol + '\'' +
                 ", geneId='" + geneId + '\'' +
                 ", variantEffect=" + variantEffect +
@@ -161,6 +170,7 @@ public class VariantAnnotation implements Variant {
         private int position = 0;
         private String ref = "";
         private String alt = "";
+        private String vcfFilter = "";
         private String geneSymbol = "";
         private String geneId = "";
         private VariantEffect variantEffect = VariantEffect.SEQUENCE_VARIANT;
@@ -193,6 +203,11 @@ public class VariantAnnotation implements Variant {
 
         public Builder alt(String alt) {
             this.alt = alt;
+            return this;
+        }
+
+        public Builder vcfFilter(String vcfFilter) {
+            this.vcfFilter = vcfFilter;
             return this;
         }
 

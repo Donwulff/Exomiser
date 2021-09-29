@@ -48,7 +48,7 @@ import java.util.*;
  * @author Jules Jacobsen <jules.jacobsen@sanger.ac.uk>
  * @author Peter Robinson <peter.robinson@charite.de>
  */
-@JsonPropertyOrder({"genomeAssembly", "chromosomeName", "chromosome", "position", "ref", "alt", "id", "phredScore", "variantEffect", "nonCodingVariant", "whiteListed", "filterStatus", "variantScore", "frequencyScore", "pathogenicityScore", "predictedPathogenic", "passedFilterTypes", "failedFilterTypes", "frequencyData", "pathogenicityData", "compatibleInheritanceModes", "contributingInheritanceModes", "transcriptAnnotations"})
+@JsonPropertyOrder({"genomeAssembly", "chromosomeName", "chromosome", "position", "ref", "alt", "vcfFilter", "id", "phredScore", "variantEffect", "nonCodingVariant", "whiteListed", "filterStatus", "variantScore", "frequencyScore", "pathogenicityScore", "predictedPathogenic", "passedFilterTypes", "failedFilterTypes", "frequencyData", "pathogenicityData", "compatibleInheritanceModes", "contributingInheritanceModes", "transcriptAnnotations"})
 public class VariantEvaluation implements Comparable<VariantEvaluation>, Filterable, Inheritable, Variant {
 
     //threshold over which a variant effect score is considered pathogenic
@@ -71,6 +71,7 @@ public class VariantEvaluation implements Comparable<VariantEvaluation>, Filtera
     private final int pos;
     private final String ref;
     private final String alt;
+    private final String vcfFilter;
 
     // Variant variables, for a richer more VCF-like experience
     private final double phredScore;
@@ -107,6 +108,7 @@ public class VariantEvaluation implements Comparable<VariantEvaluation>, Filtera
         pos = builder.pos;
         ref = builder.ref;
         alt = builder.alt;
+        vcfFilter = builder.vcfFilter;
 
         this.id = builder.id;
         phredScore = builder.phredScore;
@@ -174,6 +176,13 @@ public class VariantEvaluation implements Comparable<VariantEvaluation>, Filtera
     @Override
     public String getAlt() {
         return alt;
+    }
+
+    /**
+     * @return FILTER column in VCF file
+     */
+    public String getVcfFilter() {
+        return vcfFilter;
     }
 
     public VariantContext getVariantContext() {
@@ -647,6 +656,7 @@ public class VariantEvaluation implements Comparable<VariantEvaluation>, Filtera
         private int pos;
         private String ref;
         private String alt;
+        private String vcfFilter = "";
 
         private double phredScore = 0;
 
@@ -685,6 +695,11 @@ public class VariantEvaluation implements Comparable<VariantEvaluation>, Filtera
             this.pos = pos;
             this.ref = ref;
             this.alt = alt;
+        }
+
+        public Builder vcfFilter(String vcfFilter) {
+            this.vcfFilter = vcfFilter;
+            return this;
         }
 
         public Builder genomeAssembly(GenomeAssembly genomeAssembly) {

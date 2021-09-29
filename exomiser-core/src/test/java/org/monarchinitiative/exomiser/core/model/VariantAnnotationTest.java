@@ -43,6 +43,7 @@ public class VariantAnnotationTest {
                 .position(0)
                 .ref("")
                 .alt("")
+                .vcfFilter("")
                 .geneId("")
                 .geneSymbol("")
                 .variantEffect(VariantEffect.SEQUENCE_VARIANT)
@@ -100,6 +101,14 @@ public class VariantAnnotationTest {
     }
 
     @Test
+    public void vcfFilter() {
+        VariantAnnotation instance = VariantAnnotation.builder()
+                .vcfFilter("PASS")
+                .build();
+        assertThat(instance.getVcfFilter(), equalTo("PASS"));
+    }
+
+    @Test
     public void getGeneId() {
         VariantAnnotation instance = VariantAnnotation.builder()
                 .geneId("ENSG:12233455")
@@ -135,6 +144,6 @@ public class VariantAnnotationTest {
     public void testToString() throws Exception {
         System.out.println(VariantAnnotation.empty());
         assertThat(VariantAnnotation.empty()
-                .toString(), equalTo("VariantAnnotation{genomeAssembly=hg19, chromosome=0, chromosomeName='', position=0, ref='', alt='', geneSymbol='', geneId='', variantEffect=SEQUENCE_VARIANT, annotations=[]}"));
+                .toString(), equalTo("VariantAnnotation{genomeAssembly=hg19, chromosome=0, chromosomeName='', position=0, ref='', alt='', vcfFilter='', geneSymbol='', geneId='', variantEffect=SEQUENCE_VARIANT, annotations=[]}"));
     }
 }
