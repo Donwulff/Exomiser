@@ -72,6 +72,8 @@ public class HtmlResultsWriter implements ResultsWriter {
 
     private final TemplateEngine templateEngine;
 
+    private final ReportLinks reportLinks = ReportLinks.loadDefault();
+
     private static final OutputFormat OUTPUT_FORMAT = OutputFormat.HTML;
 
     public HtmlResultsWriter() {
@@ -102,6 +104,9 @@ public class HtmlResultsWriter implements ResultsWriter {
 
     private Context buildContext(AnalysisResults analysisResults, OutputSettings outputSettings) {
         Context context = new Context();
+
+        // configurable external-information links (VarSome/SNPedia/... - see report-links.yml)
+        context.setVariable("reportLinks", reportLinks);
 
         Analysis analysis = analysisResults.analysis();
         Sample sample = analysisResults.sample();

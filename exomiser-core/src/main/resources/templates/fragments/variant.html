@@ -38,6 +38,13 @@
                th:href="@{http://www.ncbi.nlm.nih.gov/variation/view/(q=${rsId})}"> (variation viewer)
             </a>
         </th:block>
+        <th:block th:if="${reportLinks != null}">
+            <th:block th:with="externalLinks=${reportLinks.resolve(variantEvaluation)}">
+                <a th:each="link: ${externalLinks}"
+                   th:href="${link.url}" th:text="${link.label}"
+                   target="_blank" rel="noopener noreferrer" class="external-link">VarSome</a>
+            </th:block>
+        </th:block>
     </div>
     <!--<div class="col-sm-12">-->
     <!--</div>-->
