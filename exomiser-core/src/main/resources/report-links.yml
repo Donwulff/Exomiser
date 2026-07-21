@@ -1,0 +1,28 @@
+# External-information links shown next to each variant in the HTML report.
+#
+# Each link is a label plus a URL template. The following placeholders are filled in per-variant:
+#   {assembly}  genome assembly, e.g. hg19 / hg38
+#   {chr}       chromosome / contig name, e.g. 10
+#   {pos}       1-based position
+#   {ref}       reference allele
+#   {alt}       alternate allele
+#   {gene}      gene symbol
+#   {rsId}      numeric dbSNP id (no "rs" prefix - add your own, e.g. Rs{rsId} or rs{rsId})
+#
+# A link is only shown for a variant when every placeholder it uses has a value for that variant,
+# so the SNPedia link below appears only for variants that have an rsId.
+#
+# NOTE: outbound links disclose which variants are being investigated to third-party sites. Ensure
+# this is acceptable under your data-governance policy before distributing reports.
+links:
+  - label: VarSome
+    url: "https://varsome.com/variant/{assembly}/{chr}:{pos}:{ref}:{alt}"
+  - label: SNPedia
+    url: "https://www.snpedia.com/index.php/Rs{rsId}"
+# Further examples - uncomment or add your own:
+#  - label: gnomAD
+#    url: "https://gnomad.broadinstitute.org/variant/{chr}-{pos}-{ref}-{alt}"
+#  - label: dbSNP
+#    url: "https://www.ncbi.nlm.nih.gov/snp/rs{rsId}"
+#  - label: Franklin
+#    url: "https://franklin.genoox.com/clinical-db/variant/snp/chr{chr}-{pos}-{ref}-{alt}"
