@@ -79,6 +79,18 @@ interface GenomeProperties {
 
     void setRemmPath(String remmPath);
 
+    String getDannSnvPath();
+
+    void setDannSnvPath(String dannSnvPath);
+
+    String getDannInDelPath();
+
+    void setDannInDelPath(String dannInDelPath);
+
+    String getNcboostPath();
+
+    void setNcboostPath(String ncboostPath);
+
     String getLocalFrequencyPath();
 
     void setLocalFrequencyPath(String localFrequencyPath);

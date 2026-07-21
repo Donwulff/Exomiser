@@ -44,8 +44,12 @@ public enum PathogenicitySource {
     SIFT,
     // http://cadd.gs.washington.edu/info
     CADD,
+    // https://cbcl.ics.uci.edu/public_data/DANN/ - CADD-style deep-neural-network score, SNV + indel, already 0-1
+    DANN,
     // https://charite.github.io/software-remm-score.html
     REMM,
+    // https://github.com/RausellLab/NCBoost - non-coding boosting score, highest score spanned over the range
+    NCBOOST,
     // https://sites.google.com/site/revelgenomics/
     // “REVEL: An ensemble method for predicting the pathogenicity of rare missense variants.”  American Journal of Human Genetics 2016; 99(4):877-885
     // http://dx.doi.org/10.1016/j.ajhg.2016.08.016

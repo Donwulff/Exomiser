@@ -18,39 +18,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package org.monarchinitiative.exomiser.core.genome.dao;
 
-import de.charite.compbio.jannovar.annotation.VariantEffect;
-import htsjdk.tribble.readers.TabixReader;
 import org.monarchinitiative.exomiser.core.model.Variant;
 import org.monarchinitiative.exomiser.core.model.pathogenicity.PathogenicityData;
-import org.monarchinitiative.exomiser.core.model.pathogenicity.RemmScore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 
-import java.io.IOException;
-
-import static org.monarchinitiative.svart.VariantType.INS;
-
 /**
+ * Reads REMM (ReMM) non-coding scores from a tabix file, taking the max over the variant's range. All parsing is handled
+ * by {@link TabixPathogenicityDao}; this class only supplies the {@link TabixPathogenicitySource#remm()} preset and its
+ * own cache name. The non-coding-only restriction lives in the preset's {@link TabixPathogenicitySource.Applicability}.
  *
  * @author Jules Jacobsen <j.jacobsen@qmul.ac.uk>
  */
-public class RemmDao implements PathogenicityDao {
-
-    private final Logger logger = LoggerFactory.getLogger(RemmDao.class);
-
-    private final TabixDataSource remmTabixDataSource;
+public class RemmDao extends TabixPathogenicityDao {
 
     public RemmDao(TabixDataSource remmTabixDataSource) {
-        this.remmTabixDataSource = remmTabixDataSource;
+        super(TabixPathogenicitySource.remm(), remmTabixDataSource);
     }
 
     @Caching(cacheable = {
@@ -59,38 +44,6 @@ public class RemmDao implements PathogenicityDao {
     })
     @Override
     public PathogenicityData getPathogenicityData(Variant variant) {
-        logger.debug("Getting REMM data for {}", variant);
-        // REMM has not been trained on missense variants so skip these
-        if (variant.variantEffect() == VariantEffect.MISSENSE_VARIANT) {
-            return PathogenicityData.empty();
-        }
-        String chromosome = variant.contigName();
-        int start = variant.start();
-        // test bases either side of insertion or all bases of a SNV/MNV/DEL
-        int end = variant.variantType() == INS ? variant.end() + 1 : variant.end();
-        return getRemmData(chromosome, start, end);
+        return super.getPathogenicityData(variant);
     }
-
-    private synchronized PathogenicityData getRemmData(String chromosome, int start, int end) {
-        try {
-            float score = Float.NaN;
-            String line;
-            TabixReader.Iterator results = remmTabixDataSource.query(chromosome, start, end);
-            while ((line = results.next()) != null) {
-                String[] elements = line.split("\t");
-                if (Float.isNaN(score)) {
-                    score = Float.parseFloat(elements[2]);
-                } else {
-                    score = Math.max(score, Float.parseFloat(elements[2]));
-                }
-            }
-            if (!Float.isNaN(score)) {
-                return PathogenicityData.of(RemmScore.of(score));
-            }
-        } catch (IOException e) {
-            logger.error("Unable to read from REMM tabix file {}", remmTabixDataSource.getSource(), e);
-        }
-        return PathogenicityData.empty();
-    }
-
 }

@@ -57,6 +57,9 @@ public class GenomeDataSourceLoader {
     private final TabixDataSource caddSnvTabixDataSource;
     private final TabixDataSource caddIndelTabixDataSource;
     private final TabixDataSource remmTabixDataSource;
+    private final TabixDataSource dannSnvTabixDataSource;
+    private final TabixDataSource dannIndelTabixDataSource;
+    private final TabixDataSource ncBoostTabixDataSource;
     private final TabixDataSource testPathogenicityTabixDataSource;
 
     public GenomeDataSourceLoader(GenomeProperties genomeProperties, GenomeDataResolver genomeDataResolver) {
@@ -78,6 +81,9 @@ public class GenomeDataSourceLoader {
         this.caddSnvTabixDataSource = getTabixDataSourceOrDefault("CADD snv", genomeProperties.getCaddSnvPath());
         this.caddIndelTabixDataSource = getTabixDataSourceOrDefault("CADD InDel", genomeProperties.getCaddInDelPath());
         this.remmTabixDataSource = getTabixDataSourceOrDefault("REMM", genomeProperties.getRemmPath());
+        this.dannSnvTabixDataSource = getTabixDataSourceOrDefault("DANN snv", genomeProperties.getDannSnvPath());
+        this.dannIndelTabixDataSource = getTabixDataSourceOrDefault("DANN InDel", genomeProperties.getDannInDelPath());
+        this.ncBoostTabixDataSource = getTabixDataSourceOrDefault("NCBOOST", genomeProperties.getNcboostPath());
         this.testPathogenicityTabixDataSource = getTabixDataSourceOrDefault("TEST", genomeProperties.getTestPathogenicityScorePath());
 //        this.jannovarData = jannovarDataFuture.join();
         logger.debug("{} genome data sources loaded", genomeProperties.getAssembly());
@@ -165,6 +171,18 @@ public class GenomeDataSourceLoader {
 
     public TabixDataSource getRemmTabixDataSource() {
         return remmTabixDataSource;
+    }
+
+    public TabixDataSource getDannSnvTabixDataSource() {
+        return dannSnvTabixDataSource;
+    }
+
+    public TabixDataSource getDannIndelTabixDataSource() {
+        return dannIndelTabixDataSource;
+    }
+
+    public TabixDataSource getNcBoostTabixDataSource() {
+        return ncBoostTabixDataSource;
     }
 
     public TabixDataSource getTestPathogenicityTabixDataSource() {

@@ -50,7 +50,10 @@ public class VariantDataServiceImpl implements VariantDataService {
 
     private static final Logger logger = LoggerFactory.getLogger(VariantDataServiceImpl.class);
 
-    private static final Set<PathogenicitySource> TABIX_SOURCES = EnumSet.of(CADD, REMM, TEST);
+    // Sources which only score non-coding variants and so should not be consulted for coding variants. This mirrors the
+    // per-source Applicability declared on the tabix DAO configs, but is needed here too because callers may register a
+    // mock/stub DAO in place of the real one.
+    private static final Set<PathogenicitySource> NON_CODING_ONLY_SOURCES = EnumSet.of(REMM, NCBOOST);
 
     private final VariantWhiteList whiteList;
     // Default data sources
@@ -60,9 +63,10 @@ public class VariantDataServiceImpl implements VariantDataService {
 
     // Optional data sources
     private final FrequencyDao localFrequencyDao;
-    private final PathogenicityDao caddDao;
-    private final PathogenicityDao remmDao;
-    private final PathogenicityDao testPathScoreDao;
+    // Registry of tabix-backed pathogenicity DAOs keyed by the source they provide. Adding a new tabix source is a
+    // matter of registering it on the builder - no code in this class needs to change (bar NON_CODING_ONLY_SOURCES if
+    // the source is non-coding-only).
+    private final Map<PathogenicitySource, PathogenicityDao> tabixPathogenicityDaos;
 
     // Structural variant data sources
     private final FrequencyDao svFrequencyDao;
@@ -77,9 +81,7 @@ public class VariantDataServiceImpl implements VariantDataService {
         this.clinVarDao = Objects.requireNonNull(builder.clinVarDao, "clinVarDao required!");
 
         this.localFrequencyDao = builder.localFrequencyDao;
-        this.caddDao = builder.caddDao;
-        this.remmDao = builder.remmDao;
-        this.testPathScoreDao = builder.testPathScoreDao;
+        this.tabixPathogenicityDaos = new LinkedHashMap<>(builder.tabixPathogenicityDaos);
 
         this.svFrequencyDao = builder.svFrequencyDao;
         this.svPathogenicityDao = builder.svPathogenicityDao;
@@ -137,16 +139,14 @@ public class VariantDataServiceImpl implements VariantDataService {
                     .getPathogenicityData(variant));
             // run async - tabix sources are slow compared to MVStore
             List<CompletableFuture<PathogenicityData>> futurePathData = new ArrayList<>();
-            // REMM is trained on non-coding regulatory bits of the genome, this outperforms CADD for non-coding variants
-            if (pathogenicitySources.contains(REMM) && variant.isNonCodingVariant()) {
-                futurePathData.add(CompletableFuture.supplyAsync(() -> remmDao.getPathogenicityData(variant)));
-            }
-            // CADD does all of it although is not as good as REMM for the non-coding regions.
-            if (pathogenicitySources.contains(CADD)) {
-                futurePathData.add(CompletableFuture.supplyAsync(() -> caddDao.getPathogenicityData(variant)));
-            }
-            if (pathogenicitySources.contains(TEST)) {
-                futurePathData.add(CompletableFuture.supplyAsync(() -> testPathScoreDao.getPathogenicityData(variant)));
+            // Fire each requested tabix source that applies to this variant. Non-coding-only sources (REMM, NCBOOST) are
+            // skipped for coding variants - they are trained on the non-coding genome, where they outperform CADD.
+            for (Map.Entry<PathogenicitySource, PathogenicityDao> entry : tabixPathogenicityDaos.entrySet()) {
+                PathogenicitySource source = entry.getKey();
+                if (pathogenicitySources.contains(source) && sourceAppliesToVariant(source, variant)) {
+                    PathogenicityDao pathogenicityDao = entry.getValue();
+                    futurePathData.add(CompletableFuture.supplyAsync(() -> pathogenicityDao.getPathogenicityData(variant)));
+                }
             }
             for (CompletableFuture<PathogenicityData> pathogenicityDataCompletableFuture : futurePathData) {
                 PathogenicityData pathogenicityData = pathogenicityDataCompletableFuture.join();
@@ -166,12 +166,16 @@ public class VariantDataServiceImpl implements VariantDataService {
     }
 
     private boolean containsTabixSource(Set<PathogenicitySource> pathogenicitySources) {
-        for (PathogenicitySource source : TABIX_SOURCES) {
+        for (PathogenicitySource source : tabixPathogenicityDaos.keySet()) {
             if (pathogenicitySources.contains(source)) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static boolean sourceAppliesToVariant(PathogenicitySource source, Variant variant) {
+        return !NON_CODING_ONLY_SOURCES.contains(source) || variant.isNonCodingVariant();
     }
 
     private void addAllWantedScores(Set<PathogenicitySource> pathogenicitySources, PathogenicityData defaultPathogenicityData, List<PathogenicityScore> allPathScores) {
@@ -217,9 +221,7 @@ public class VariantDataServiceImpl implements VariantDataService {
 
         private FrequencyDao localFrequencyDao;
 
-        private PathogenicityDao caddDao;
-        private PathogenicityDao remmDao;
-        private PathogenicityDao testPathScoreDao;
+        private final Map<PathogenicitySource, PathogenicityDao> tabixPathogenicityDaos = new LinkedHashMap<>();
 
         private FrequencyDao svFrequencyDao = new StubFrequencyDao();
         private PathogenicityDao svPathogenicityDao = new StubPathogenicityDao();
@@ -249,19 +251,36 @@ public class VariantDataServiceImpl implements VariantDataService {
             return this;
         }
 
-        public Builder caddDao(PathogenicityDao caddDao) {
-            this.caddDao = caddDao;
+        /**
+         * Registers a tabix-backed pathogenicity DAO under the given source. This is the generic entry point; adding a
+         * new tabix pathogenicity source needs nothing more than a call to this. Passing a {@code null} DAO leaves the
+         * source unregistered (so it simply contributes no scores) rather than failing at query time.
+         */
+        public Builder pathogenicityDao(PathogenicitySource source, PathogenicityDao pathogenicityDao) {
+            if (pathogenicityDao != null) {
+                this.tabixPathogenicityDaos.put(source, pathogenicityDao);
+            }
             return this;
+        }
+
+        public Builder caddDao(PathogenicityDao caddDao) {
+            return pathogenicityDao(PathogenicitySource.CADD, caddDao);
         }
 
         public Builder remmDao(PathogenicityDao remmDao) {
-            this.remmDao = remmDao;
-            return this;
+            return pathogenicityDao(PathogenicitySource.REMM, remmDao);
+        }
+
+        public Builder dannDao(PathogenicityDao dannDao) {
+            return pathogenicityDao(PathogenicitySource.DANN, dannDao);
+        }
+
+        public Builder ncBoostDao(PathogenicityDao ncBoostDao) {
+            return pathogenicityDao(PathogenicitySource.NCBOOST, ncBoostDao);
         }
 
         public Builder testPathScoreDao(PathogenicityDao testPathScoreDao) {
-            this.testPathScoreDao = testPathScoreDao;
-            return this;
+            return pathogenicityDao(PathogenicitySource.TEST, testPathScoreDao);
         }
 
         public Builder svFrequencyDao(FrequencyDao svFrequencyDao) {
