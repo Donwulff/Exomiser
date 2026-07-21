@@ -84,6 +84,8 @@ public abstract class GenomeAnalysisServiceConfigurer implements GenomeAnalysisS
                 .localFrequencyDao(localFrequencyDao())
                 .remmDao(remmDao())
                 .caddDao(caddDao())
+                .dannDao(dannDao())
+                .ncBoostDao(ncBoostDao())
                 .testPathScoreDao(testPathScoreDao())
                 .svFrequencyDao(svFrequencyDao())
                 .svPathogenicityDao(svPathogenicityDao())

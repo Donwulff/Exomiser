@@ -62,6 +62,10 @@ public interface GenomeAnalysisServiceConfiguration {
 
     PathogenicityDao caddDao();
 
+    PathogenicityDao dannDao();
+
+    PathogenicityDao ncBoostDao();
+
     PathogenicityDao testPathScoreDao();
 
     // Structural Variant Dao
