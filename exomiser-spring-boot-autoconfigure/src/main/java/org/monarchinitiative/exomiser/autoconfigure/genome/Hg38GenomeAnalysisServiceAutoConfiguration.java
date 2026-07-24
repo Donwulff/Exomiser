@@ -134,7 +134,7 @@ public class Hg38GenomeAnalysisServiceAutoConfiguration extends GenomeAnalysisSe
     @Bean("hg38caddDao")
     @Override
     public CaddDao caddDao() {
-        return new CaddDao(genomeDataSourceLoader.getCaddIndelTabixDataSource(), genomeDataSourceLoader.getCaddSnvTabixDataSource());
+        return new CaddDao(genomeDataSourceLoader.getCaddIndelTabixDataSources(), genomeDataSourceLoader.getCaddSnvTabixDataSources());
     }
 
     @Bean("hg38dannDao")

@@ -97,6 +97,37 @@ class TabixPathogenicityDaoTest {
     }
 
     @Test
+    void exactMatchMultiFileTakesMaxPhredAcrossSources() {
+        // Official table has a lower PHRED; novel/sample table has a higher one for the same allele → one CADD score = max.
+        TabixDataSource official = tabixReturning("1\t2\tA\tT\t-0.1\t10.0");
+        TabixDataSource novel = tabixReturning("1\t2\tA\tT\t0.5\t25.0");
+        TabixPathogenicityDao instance = new TabixPathogenicityDao(
+                TabixPathogenicitySource.cadd(),
+                List.of(official, novel),
+                List.of(tabixReturning()) // indel unused for SNV
+        );
+
+        PathogenicityData result = instance.getPathogenicityData(snv("A", "T", VariantEffect.MISSENSE_VARIANT));
+
+        assertThat(result, equalTo(PathogenicityData.of(CaddScore.of(25.0f))));
+    }
+
+    @Test
+    void exactMatchMultiFileUsesHitFromSecondFileWhenFirstMisses() {
+        TabixDataSource official = tabixReturning("1\t2\tA\tC\t-0.1\t10.0"); // different alt
+        TabixDataSource novel = tabixReturning("1\t2\tA\tT\t0.5\t18.0");
+        TabixPathogenicityDao instance = new TabixPathogenicityDao(
+                TabixPathogenicitySource.cadd(),
+                List.of(official, novel),
+                List.of(tabixReturning())
+        );
+
+        PathogenicityData result = instance.getPathogenicityData(snv("A", "T", VariantEffect.MISSENSE_VARIANT));
+
+        assertThat(result, equalTo(PathogenicityData.of(CaddScore.of(18.0f))));
+    }
+
+    @Test
     void exactMatchReturnsEmptyWhenNoAlleleMatches() {
         TabixDataSource tabix = tabixReturning("1\t2\tA\tC\tANNO\t-0.234\t25.3");
         TabixPathogenicityDao instance = new TabixPathogenicityDao(TabixPathogenicitySource.dann(), tabix);

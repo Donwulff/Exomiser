@@ -4,6 +4,12 @@ distribute.sh
 # ontologizer and javautil are not on maven central
 !phenix-repository/lib/*.jar
 
+# Local runtime config / run artifacts (machine-specific paths; do not commit).
+# Distribution template stays tracked: exomiser-cli/src/main/resources/application.properties
+/application.properties
+/logs/
+/results/
+
 #Java stuff
 *.class
 *.DS_Store

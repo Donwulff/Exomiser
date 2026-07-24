@@ -25,6 +25,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import de.charite.compbio.jannovar.annotation.VariantEffect;
 import de.charite.compbio.jannovar.mendel.ModeOfInheritance;
+import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.monarchinitiative.exomiser.core.filters.FilterResult;
 import org.monarchinitiative.exomiser.core.filters.FilterType;
@@ -35,6 +36,8 @@ import org.monarchinitiative.exomiser.core.model.pathogenicity.VariantEffectPath
 import org.monarchinitiative.svart.*;
 
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * This class is a wrapper for the {@code Variant} class from the jannovar
@@ -167,11 +170,20 @@ public class VariantEvaluation extends AbstractVariant implements Comparable<Var
     }
 
     /**
+     * Allele length (bp of REF or ALT) above which UI output uses a compact SV-style summary instead of the full
+     * sequence. Matches the common structural-variant size threshold used elsewhere in Exomiser (≥50bp).
+     */
+    private static final int COMPACT_DISPLAY_ALLELE_THRESHOLD = 50;
+
+    /**
      * Returns a gnomAD formatted string for easier identification of variants in output. HGVS doesn't look similar
      * enough to VCF to enable linking to the source VCF in the output files.
      * <p>
      * Structural variants will be displayed with chromosome-start-end-ref-alt and length, whereas small variants will
      * have the more classical chromosome-start-ref-alt format.
+     * <p>
+     * Note: sequence-resolved long alleles still include the full REF/ALT here (for machine-readable TSV/VCF-style
+     * identifiers). Prefer {@link #toDisplayString()} for human-facing HTML.
      *
      * @return a String such as X-31517201-T-C or 4-65216746-65216746-G-<INS:ME:ALU>
      */
@@ -185,6 +197,64 @@ public class VariantEvaluation extends AbstractVariant implements Comparable<Var
         // can be searched for in gnomad like so:
         // https://gnomad.broadinstitute.org/variant/X-31517201-T-C
         return contig().name() + '-' + start() + '-' + ref() + '-' + alt();
+    }
+
+    /**
+     * Human-readable variant identifier for HTML reports and other UI. Small alleles use the classic gnomAD form
+     * ({@code chr-pos-ref-alt}). Symbolic and long sequence alleles use a compact span summary that never dumps
+     * multi-kb REF/ALT sequences into the page, e.g. {@code 12-52772578-53451953 (679.3kb DEL)}.
+     *
+     * @since 15.1.0
+     */
+    @JsonIgnore
+    public String toDisplayString() {
+        if (isSymbolic()) {
+            return contig().name() + '-' + start() + '-' + end() + '-' + ref() + '-' + alt()
+                    + " (" + changeLengthString() + ")";
+        }
+        if (requiresCompactDisplay()) {
+            return contig().name() + '-' + start() + '-' + end()
+                    + " (" + changeLengthString() + " " + compactChangeType() + ")";
+        }
+        return contig().name() + '-' + start() + '-' + ref() + '-' + alt();
+    }
+
+    /**
+     * Short, HTML-attribute-safe identifier for element ids / collapse targets. Never embeds full REF/ALT sequences
+     * or characters that break CSS selectors ({@code <}, {@code >}, whitespace).
+     *
+     * @since 15.1.0
+     */
+    @JsonIgnore
+    public String htmlId() {
+        // contig-start-end-changeLength + short allele fingerprint for uniqueness
+        int alleleHash = (ref() + '\0' + alt()).hashCode();
+        String hash = Integer.toHexString(alleleHash);
+        return contig().name() + '-' + start() + '-' + end() + "-cl" + changeLength() + '-' + hash;
+    }
+
+    /**
+     * {@code true} when full REF/ALT sequences should not be embedded in UI (symbolic alleles, |changeLength| ≥ 50,
+     * or either allele longer than 50bp).
+     */
+    @JsonIgnore
+    public boolean requiresCompactDisplay() {
+        return isSymbolic()
+                || Math.abs(changeLength()) >= COMPACT_DISPLAY_ALLELE_THRESHOLD
+                || ref().length() >= COMPACT_DISPLAY_ALLELE_THRESHOLD
+                || alt().length() >= COMPACT_DISPLAY_ALLELE_THRESHOLD;
+    }
+
+    private String compactChangeType() {
+        int cl = changeLength();
+        if (cl < 0) {
+            return "DEL";
+        }
+        if (cl > 0) {
+            return "INS";
+        }
+        // Equal-length but long alleles (large MNV / complex substitution)
+        return "COMPLEX";
     }
 
     public String changeLengthString() {
@@ -216,6 +286,255 @@ public class VariantEvaluation extends AbstractVariant implements Comparable<Var
             }
         }
         return genotypeStrings.toString();
+    }
+
+    /**
+     * Original VCF {@code FILTER} column for human-facing reports. Matches VCF semantics:
+     * <ul>
+     *   <li>{@code PASS} when filters were applied and none failed</li>
+     *   <li>semicolon-joined filter ids when the call failed one or more filters (e.g. {@code VQLOW})</li>
+     *   <li>{@code .} when no filter status is available (missing context, or filters not applied)</li>
+     * </ul>
+     * This is the <em>caller's</em> FILTER field, not Exomiser's own analysis filter status
+     * (see {@link #filterStatus()} / {@link #failedFilterTypes()}).
+     *
+     * @since 15.1.0
+     */
+    @JsonIgnore
+    public String vcfFilter() {
+        if (variantContext == null || !variantContext.filtersWereApplied()) {
+            return ".";
+        }
+        if (variantContext.isNotFiltered()) {
+            return "PASS";
+        }
+        Set<String> filters = variantContext.getFilters();
+        if (filters == null || filters.isEmpty()) {
+            return "PASS";
+        }
+        return filters.stream().sorted().collect(java.util.stream.Collectors.joining(";"));
+    }
+
+    /**
+     * {@code true} when the caller VCF FILTER is present and not {@code PASS} / {@code .}.
+     * Prefer this over string comparison in Thymeleaf — OGNL {@code !=} coerces operands to
+     * numbers and throws {@link NumberFormatException} on values like {@code VQLOW}.
+     *
+     * @since 15.1.0
+     */
+    @JsonIgnore
+    public boolean hasNonPassVcfFilter() {
+        String filter = vcfFilter();
+        return !".".equals(filter) && !"PASS".equals(filter);
+    }
+
+    /**
+     * Original VCF {@code QUAL} (PHRED-scaled site quality) for human-facing reports. Missing or
+     * sentinel values (HTSJDK uses a negative score when QUAL is {@code .}) are shown as {@code .}.
+     * <p>
+     * Useful for many short-variant VCFs; often empty for structural / Complete Genomics style
+     * calls where {@link #vcfFilter()} / {@link #genotypeQualityString()} are more informative.
+     *
+     * @since 15.1.0
+     */
+    @JsonIgnore
+    public String vcfQual() {
+        // HTSJDK maps missing QUAL (".") to a negative PHRED; infinity/NaN also mean "not usable".
+        if (Double.isNaN(phredScore) || Double.isInfinite(phredScore) || phredScore < 0.0) {
+            return ".";
+        }
+        if (phredScore == Math.rint(phredScore) && phredScore < 1_000_000_000d) {
+            return Integer.toString((int) phredScore);
+        }
+        return String.format(Locale.ROOT, "%.1f", phredScore);
+    }
+
+    /**
+     * Per-sample genotype quality ({@code FORMAT/GQ}), colon-joined for multi-sample VCFs. {@code .}
+     * when no sample has GQ. Often the best short-variant confidence signal when site QUAL is missing.
+     *
+     * @since 15.1.0
+     */
+    @JsonIgnore
+    public String genotypeQualityString() {
+        return formatPerSample(g -> g.hasGQ() ? Integer.toString(g.getGQ()) : null);
+    }
+
+    /**
+     * Per-sample read depth ({@code FORMAT/DP}), colon-joined. {@code .} when unavailable.
+     *
+     * @since 15.1.0
+     */
+    @JsonIgnore
+    public String readDepthString() {
+        return formatPerSample(g -> g.hasDP() ? Integer.toString(g.getDP()) : null);
+    }
+
+    /**
+     * Per-sample allele depths ({@code FORMAT/AD} as comma-separated counts), colon-joined across
+     * samples. {@code .} when unavailable.
+     *
+     * @since 15.1.0
+     */
+    @JsonIgnore
+    public String alleleDepthString() {
+        return formatPerSample(g -> {
+            if (!g.hasAD()) {
+                return null;
+            }
+            int[] ad = g.getAD();
+            StringJoiner joiner = new StringJoiner(",");
+            for (int depth : ad) {
+                joiner.add(Integer.toString(depth));
+            }
+            return joiner.toString();
+        });
+    }
+
+    /**
+     * Per-sample allele balance (alt reads / (ref+alt) from {@code AD}), colon-joined. {@code .} when
+     * AD is unavailable. Aligns with the metric used by {@code AlleleBalanceFilter}.
+     *
+     * @since 15.1.0
+     */
+    @JsonIgnore
+    public String alleleBalanceString() {
+        return formatPerSample(g -> {
+            if (!g.hasAD()) {
+                return null;
+            }
+            int[] ad = g.getAD();
+            if (ad.length < 2) {
+                return null;
+            }
+            int ref = Math.max(ad[0], 0);
+            int alt = 0;
+            for (int i = 1; i < ad.length; i++) {
+                alt += Math.max(ad[i], 0);
+            }
+            double denom = ref + alt;
+            if (denom <= 0) {
+                return null;
+            }
+            return String.format(Locale.ROOT, "%.2f", alt / denom);
+        });
+    }
+
+    /**
+     * Curated call-confidence details for the expanded variant panel. Only fields with a real value
+     * are included (no {@code .} placeholders), so the table stays short and non-redundant.
+     * <p>
+     * Order / selection rationale:
+     * <ol>
+     *   <li>Site {@code FILTER} / {@code QUAL} — always first when present</li>
+     *   <li>{@code GQ}, {@code DP}, {@code AD}, {@code AB} — sample FORMAT metrics used in practice</li>
+     *   <li>{@code FT} — genotype-level filter when it differs from site FILTER</li>
+     *   <li>{@code SVTYPE} / {@code SVLEN} / supporting {@code SNPS} — structural call context</li>
+     * </ol>
+     * Deliberately omitted as noisy or redundant: GL/PL, HQ/EHQ, full alternate-call dumps, AC/AN/NS.
+     *
+     * @since 15.1.0
+     */
+    @JsonIgnore
+    public List<NamedValue> callQualityDetails() {
+        List<NamedValue> details = new ArrayList<>();
+        addIfPresent(details, "FILTER", vcfFilter());
+        addIfPresent(details, "QUAL", vcfQual());
+        addIfPresent(details, "GQ", genotypeQualityString());
+        addIfPresent(details, "DP", readDepthString());
+        addIfPresent(details, "AD", alleleDepthString());
+        addIfPresent(details, "AB", alleleBalanceString());
+
+        String genotypeFilters = formatPerSample(g -> {
+            String ft = g.getFilters();
+            if (ft == null || ft.isEmpty() || ft.equals(".")) {
+                return null;
+            }
+            return ft;
+        });
+        // Skip FT when it is just PASS and site FILTER is already PASS (no extra information).
+        if (!".".equals(genotypeFilters)
+                && !(genotypeFilters.equals("PASS") && "PASS".equals(vcfFilter()))) {
+            details.add(new NamedValue("FT", genotypeFilters));
+        }
+
+        if (variantContext != null) {
+            addInfoIfPresent(details, "SVTYPE");
+            addInfoIfPresent(details, "SVLEN");
+            // CGI / ROH-style supporting SNP count for large deletions — useful, not redundant with SVLEN.
+            addInfoIfPresent(details, "SNPS");
+        }
+        return List.copyOf(details);
+    }
+
+    private static void addIfPresent(List<NamedValue> details, String name, String value) {
+        if (value != null && !value.isEmpty() && !".".equals(value)) {
+            details.add(new NamedValue(name, value));
+        }
+    }
+
+    private void addInfoIfPresent(List<NamedValue> details, String infoId) {
+        if (variantContext == null || !variantContext.hasAttribute(infoId)) {
+            return;
+        }
+        Object raw = variantContext.getAttribute(infoId);
+        if (raw == null) {
+            return;
+        }
+        String value;
+        if (raw instanceof List<?> list) {
+            value = list.stream().map(String::valueOf).collect(Collectors.joining(","));
+        } else {
+            value = String.valueOf(raw);
+        }
+        if (!value.isEmpty() && !".".equals(value) && !"null".equals(value)) {
+            details.add(new NamedValue(infoId, value));
+        }
+    }
+
+    /**
+     * Formats a per-genotype value across all samples, colon-joined (same convention as
+     * {@link #genotypeString()}). Returns {@code .} when no sample produces a value.
+     */
+    private String formatPerSample(Function<Genotype, String> extractor) {
+        if (variantContext == null || !variantContext.hasGenotypes()) {
+            return ".";
+        }
+        StringJoiner joiner = new StringJoiner(":");
+        boolean any = false;
+        for (Genotype genotype : variantContext.getGenotypes()) {
+            String value = extractor.apply(genotype);
+            if (value == null || value.isEmpty()) {
+                joiner.add(".");
+            } else {
+                any = true;
+                joiner.add(value);
+            }
+        }
+        return any ? joiner.toString() : ".";
+    }
+
+    /**
+     * A labelled value for Thymeleaf tables (JavaBean getters required by OGNL).
+     *
+     * @since 15.1.0
+     */
+    public static final class NamedValue {
+        private final String name;
+        private final String value;
+
+        public NamedValue(String name, String value) {
+            this.name = name;
+            this.value = value;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String getValue() {
+            return value;
+        }
     }
 
     /**

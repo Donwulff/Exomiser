@@ -22,6 +22,7 @@ package org.monarchinitiative.exomiser.core.writers;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
+import org.monarchinitiative.exomiser.core.genome.GenomeAssembly;
 import org.monarchinitiative.exomiser.core.model.VariantEvaluation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,10 +41,20 @@ import java.util.regex.Pattern;
  * plus a URL template (see {@code report-links.yml} on the classpath); the template placeholders are
  * filled in per-variant by {@link #resolve(VariantEvaluation)}.
  * <p>
- * Supported placeholders: {@code {assembly}} (hg19/hg38), {@code {chr}}, {@code {pos}}, {@code {ref}},
- * {@code {alt}}, {@code {gene}}, {@code {rsId}} (the numeric part of the dbSNP id). A link is only
- * emitted for a variant when every placeholder it references has a value for that variant, so e.g. an
- * rsId-based link is silently omitted for variants with no rsId.
+ * Supported placeholders:
+ * <ul>
+ *   <li>{@code {assembly}} — hg19 / hg38</li>
+ *   <li>{@code {ensemblHost}} — grch37 (hg19) or www (hg38), for Ensembl URLs</li>
+ *   <li>{@code {ucscDb}} — hg19 / hg38 UCSC database name</li>
+ *   <li>{@code {chr}} — contig name as stored (e.g. 12)</li>
+ *   <li>{@code {chrUcsc}} — UCSC-style contig (e.g. chr12, chrM)</li>
+ *   <li>{@code {pos}} / {@code {end}} — 1-based start and end (region links use both)</li>
+ *   <li>{@code {ref}} / {@code {alt}} — short sequence alleles only; empty for long/symbolic alleles
+ *       so allele-based templates (VarSome) are omitted rather than emitting broken URLs</li>
+ *   <li>{@code {gene}} — gene symbol</li>
+ *   <li>{@code {rsId}} — numeric part of the dbSNP id</li>
+ * </ul>
+ * A link is only emitted when every placeholder it references has a value for that variant.
  * <p>
  * Note: outbound links disclose which variants are being investigated to third-party sites.
  *
@@ -56,6 +67,12 @@ public class ReportLinks {
     private static final String DEFAULT_RESOURCE = "/report-links.yml";
     private static final YAMLMapper YAML_MAPPER = new YAMLMapper();
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{([a-zA-Z][a-zA-Z0-9]*)}");
+
+    /**
+     * Max allele length embedded in allele-based URLs (VarSome etc.). Longer or symbolic alleles leave
+     * {@code {ref}}/{@code {alt}} empty so those templates are skipped; use region links instead.
+     */
+    private static final int MAX_URL_ALLELE_LENGTH = 50;
 
     private final List<ReportLink> links;
 
@@ -112,13 +129,76 @@ public class ReportLinks {
     private static Map<String, String> placeholderValues(VariantEvaluation variant) {
         Map<String, String> values = new HashMap<>();
         values.put("assembly", variant.genomeAssembly().toString());
+        values.put("ensemblHost", ensemblHost(variant.genomeAssembly()));
+        values.put("ucscDb", variant.genomeAssembly().toString());
         values.put("chr", variant.contigName());
+        values.put("chrUcsc", ucscChrom(variant.contigName()));
         values.put("pos", Integer.toString(variant.start()));
-        values.put("ref", variant.ref());
-        values.put("alt", variant.alt());
+        values.put("end", Integer.toString(variant.end()));
+        // Allele-based templates need real short sequences; long/symbolic alleles blank out so those
+        // links are omitted (region templates using pos/end still resolve).
+        if (variant.requiresCompactDisplay()) {
+            values.put("ref", "");
+            values.put("alt", "");
+        } else {
+            values.put("ref", alleleForUrl(variant.ref()));
+            values.put("alt", alleleForUrl(variant.alt()));
+        }
         values.put("gene", blankIfPlaceholder(variant.geneSymbol()));
         values.put("rsId", rsIdNumber(variant.frequencyData().getRsId()));
         return values;
+    }
+
+    /**
+     * Ensembl host subdomain for the assembly: archived GRCh37 site vs current GRCh38 site.
+     */
+    static String ensemblHost(GenomeAssembly assembly) {
+        return assembly == GenomeAssembly.HG19 ? "grch37" : "www";
+    }
+
+    /**
+     * UCSC-style chromosome name ({@code chr12}, {@code chrX}, {@code chrM}). Leaves names that already
+     * start with {@code chr} unchanged.
+     */
+    static String ucscChrom(String contig) {
+        if (contig == null || contig.isEmpty()) {
+            return "";
+        }
+        if (contig.regionMatches(true, 0, "chr", 0, 3)) {
+            return contig;
+        }
+        if (contig.equals("MT") || contig.equals("M") || contig.equalsIgnoreCase("chrMT")) {
+            return "chrM";
+        }
+        return "chr" + contig;
+    }
+
+    /**
+     * Allele string for URL templates. Empty when null/blank or longer than {@link #MAX_URL_ALLELE_LENGTH}
+     * (callers should already blank long/symbolic via {@link VariantEvaluation#requiresCompactDisplay()}).
+     */
+    static String alleleForUrl(String allele) {
+        if (allele == null || allele.isEmpty()) {
+            return "";
+        }
+        if (allele.length() > MAX_URL_ALLELE_LENGTH) {
+            return "";
+        }
+        return allele;
+    }
+
+    /**
+     * @deprecated use {@link #alleleForUrl(String)}; kept for any external callers of the old helper.
+     */
+    @Deprecated
+    static String compactAlleleForUrl(String allele) {
+        if (allele == null || allele.isEmpty()) {
+            return "";
+        }
+        if (allele.charAt(0) == '<' || allele.length() <= MAX_URL_ALLELE_LENGTH) {
+            return allele;
+        }
+        return allele.charAt(0) + "[" + allele.length() + "bp]";
     }
 
     /**

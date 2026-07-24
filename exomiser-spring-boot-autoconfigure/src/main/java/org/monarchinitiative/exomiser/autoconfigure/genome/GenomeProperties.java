@@ -25,6 +25,7 @@ import org.monarchinitiative.exomiser.core.genome.GenomeAssembly;
 import org.monarchinitiative.exomiser.core.genome.jannovar.TranscriptSource;
 
 import java.nio.file.Path;
+import java.util.List;
 
 /**
  * Package-private interface. Required for polymorphic dispatch in the {@link GenomeAnalysisServiceConfigurer} constructor.
@@ -67,13 +68,20 @@ interface GenomeProperties {
 
     void setVariantWhiteListPath(String VariantWhiteListPath);
 
-    String getCaddSnvPath();
+    /**
+     * One or more CADD SNV tabix paths. Spring binds a single property value as a one-element list, or use
+     * {@code exomiser.hg19.cadd-snv-path[0]=...} / {@code [1]=...} for multi-file (max PHRED wins).
+     */
+    List<String> getCaddSnvPath();
 
-    void setCaddSnvPath(String caddSnvPath);
+    void setCaddSnvPath(List<String> caddSnvPath);
 
-    String getCaddInDelPath();
+    /**
+     * One or more CADD indel tabix paths. Same multi-file semantics as {@link #getCaddSnvPath()}.
+     */
+    List<String> getCaddInDelPath();
 
-    void setCaddInDelPath(String caddInDelPath);
+    void setCaddInDelPath(List<String> caddInDelPath);
 
     String getRemmPath();
 

@@ -134,7 +134,7 @@ public class Hg19GenomeAnalysisServiceAutoConfiguration extends GenomeAnalysisSe
     @Bean("hg19caddDao")
     @Override
     public CaddDao caddDao() {
-        return new CaddDao(genomeDataSourceLoader.getCaddIndelTabixDataSource(), genomeDataSourceLoader.getCaddSnvTabixDataSource());
+        return new CaddDao(genomeDataSourceLoader.getCaddIndelTabixDataSources(), genomeDataSourceLoader.getCaddSnvTabixDataSources());
     }
 
     @Bean("hg19dannDao")

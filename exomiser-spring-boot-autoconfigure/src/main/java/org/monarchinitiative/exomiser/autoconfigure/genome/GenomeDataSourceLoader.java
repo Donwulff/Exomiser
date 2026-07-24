@@ -29,7 +29,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -54,8 +56,8 @@ public class GenomeDataSourceLoader {
 
     //TabixDataSources
     private final TabixDataSource localFrequencyTabixDataSource;
-    private final TabixDataSource caddSnvTabixDataSource;
-    private final TabixDataSource caddIndelTabixDataSource;
+    private final List<TabixDataSource> caddSnvTabixDataSources;
+    private final List<TabixDataSource> caddIndelTabixDataSources;
     private final TabixDataSource remmTabixDataSource;
     private final TabixDataSource dannSnvTabixDataSource;
     private final TabixDataSource dannIndelTabixDataSource;
@@ -78,8 +80,8 @@ public class GenomeDataSourceLoader {
         this.variantWhiteList = loadVariantWhiteList();
 
         this.localFrequencyTabixDataSource = getTabixDataSourceOrDefault("LOCAL", genomeProperties.getLocalFrequencyPath());
-        this.caddSnvTabixDataSource = getTabixDataSourceOrDefault("CADD snv", genomeProperties.getCaddSnvPath());
-        this.caddIndelTabixDataSource = getTabixDataSourceOrDefault("CADD InDel", genomeProperties.getCaddInDelPath());
+        this.caddSnvTabixDataSources = getTabixDataSourcesOrDefault("CADD snv", genomeProperties.getCaddSnvPath());
+        this.caddIndelTabixDataSources = getTabixDataSourcesOrDefault("CADD InDel", genomeProperties.getCaddInDelPath());
         this.remmTabixDataSource = getTabixDataSourceOrDefault("REMM", genomeProperties.getRemmPath());
         this.dannSnvTabixDataSource = getTabixDataSourceOrDefault("DANN snv", genomeProperties.getDannSnvPath());
         this.dannIndelTabixDataSource = getTabixDataSourceOrDefault("DANN InDel", genomeProperties.getDannInDelPath());
@@ -141,6 +143,38 @@ public class GenomeDataSourceLoader {
         }
     }
 
+    /**
+     * Loads zero or more tabix paths for a multi-file pathogenicity source (CADD). Empty / blank entries are skipped.
+     * If nothing remains configured, returns a one-element list with {@link ErrorThrowingTabixDataSource} — same
+     * fail-on-use behaviour as the single-path helpers. Does not mix error stubs with real files: a missing path in a
+     * multi-file list fails at open time via {@link TabixDataSourceLoader#load}.
+     */
+    private List<TabixDataSource> getTabixDataSourcesOrDefault(String dataSourceName, List<String> tabixPaths) {
+        List<TabixDataSource> loaded = new ArrayList<>();
+        if (tabixPaths != null) {
+            int index = 0;
+            for (String tabixPath : tabixPaths) {
+                if (tabixPath == null || tabixPath.isBlank()) {
+                    continue;
+                }
+                Path path = genomeDataResolver.resolvePathOrNullIfEmpty(tabixPath.trim());
+                if (path == null) {
+                    continue;
+                }
+                String label = tabixPaths.size() > 1 ? dataSourceName + " [" + index + "]" : dataSourceName;
+                logger.info("Opening {} data from source: {}", label, path);
+                loaded.add(TabixDataSourceLoader.load(path));
+                index++;
+            }
+        }
+        if (loaded.isEmpty()) {
+            logger.debug("Data for {} is not configured. THIS WILL LEAD TO ERRORS IF REQUIRED DURING ANALYSIS. Check the application.properties is pointing to a valid file.", dataSourceName);
+            String message = "Data for " + dataSourceName + " is not configured. Check the application.properties is pointing to a valid file.";
+            return List.of(new ErrorThrowingTabixDataSource(message));
+        }
+        return List.copyOf(loaded);
+    }
+
     public JannovarData getJannovarData() {
         return jannovarData;
     }
@@ -161,12 +195,24 @@ public class GenomeDataSourceLoader {
         return localFrequencyTabixDataSource;
     }
 
-    public TabixDataSource getCaddSnvTabixDataSource() {
-        return caddSnvTabixDataSource;
+    public List<TabixDataSource> getCaddSnvTabixDataSources() {
+        return caddSnvTabixDataSources;
     }
 
+    public List<TabixDataSource> getCaddIndelTabixDataSources() {
+        return caddIndelTabixDataSources;
+    }
+
+    /** @deprecated use {@link #getCaddSnvTabixDataSources()}; returns the first source for callers expecting one. */
+    @Deprecated
+    public TabixDataSource getCaddSnvTabixDataSource() {
+        return caddSnvTabixDataSources.get(0);
+    }
+
+    /** @deprecated use {@link #getCaddIndelTabixDataSources()}; returns the first source for callers expecting one. */
+    @Deprecated
     public TabixDataSource getCaddIndelTabixDataSource() {
-        return caddIndelTabixDataSource;
+        return caddIndelTabixDataSources.get(0);
     }
 
     public TabixDataSource getRemmTabixDataSource() {
@@ -197,14 +243,14 @@ public class GenomeDataSourceLoader {
         return Objects.equals(jannovarData, that.jannovarData) &&
                 Objects.equals(allelePropsMvStore, that.allelePropsMvStore) &&
                 Objects.equals(localFrequencyTabixDataSource, that.localFrequencyTabixDataSource) &&
-                Objects.equals(caddSnvTabixDataSource, that.caddSnvTabixDataSource) &&
-                Objects.equals(caddIndelTabixDataSource, that.caddIndelTabixDataSource) &&
+                Objects.equals(caddSnvTabixDataSources, that.caddSnvTabixDataSources) &&
+                Objects.equals(caddIndelTabixDataSources, that.caddIndelTabixDataSources) &&
                 Objects.equals(remmTabixDataSource, that.remmTabixDataSource);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(jannovarData, allelePropsMvStore, localFrequencyTabixDataSource, caddSnvTabixDataSource, caddIndelTabixDataSource, remmTabixDataSource);
+        return Objects.hash(jannovarData, allelePropsMvStore, localFrequencyTabixDataSource, caddSnvTabixDataSources, caddIndelTabixDataSources, remmTabixDataSource);
     }
 
 }

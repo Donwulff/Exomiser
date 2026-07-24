@@ -25,6 +25,7 @@ import org.monarchinitiative.exomiser.core.genome.GenomeAssembly;
 import org.monarchinitiative.exomiser.core.model.VariantEvaluation;
 import org.monarchinitiative.exomiser.core.model.frequency.FrequencyData;
 import org.monarchinitiative.svart.CoordinateSystem;
+import org.monarchinitiative.svart.Coordinates;
 import org.monarchinitiative.svart.Strand;
 
 import java.util.List;
@@ -47,6 +48,18 @@ class ReportLinksTest {
             builder.frequencyData(FrequencyData.of(rsId));
         }
         return builder.build();
+    }
+
+    private VariantEvaluation longDel() {
+        // Sequence-resolved DEL: REF length must match coordinate span (svart validates this).
+        String longRef = "A" + "T".repeat(100); // 101 bp
+        int start = 52772578;
+        int end = start + longRef.length() - 1;
+        return VariantEvaluation.builder()
+                .variant(GenomeAssembly.HG19.getContigById(12), Strand.POSITIVE,
+                        Coordinates.oneBased(start, end), longRef, "A", 1 - longRef.length())
+                .geneSymbol("KRT2")
+                .build();
     }
 
     @Test
@@ -72,6 +85,67 @@ class ReportLinksTest {
     }
 
     @Test
+    void ensemblHostByAssembly() {
+        assertEquals("grch37", ReportLinks.ensemblHost(GenomeAssembly.HG19));
+        assertEquals("www", ReportLinks.ensemblHost(GenomeAssembly.HG38));
+    }
+
+    @Test
+    void ucscChromAddsPrefix() {
+        assertEquals("chr12", ReportLinks.ucscChrom("12"));
+        assertEquals("chrX", ReportLinks.ucscChrom("X"));
+        assertEquals("chrM", ReportLinks.ucscChrom("MT"));
+        assertEquals("chr12", ReportLinks.ucscChrom("chr12"));
+    }
+
+    @Test
+    void alleleForUrlRejectsLong() {
+        assertEquals("T", ReportLinks.alleleForUrl("T"));
+        assertEquals("", ReportLinks.alleleForUrl("A" + "C".repeat(50)));
+        assertEquals("", ReportLinks.alleleForUrl(""));
+        assertEquals("", ReportLinks.alleleForUrl(null));
+    }
+
+    @Test
+    void resolveOmitsVarSomeForLongAllelesButEmitsRegionLink() {
+        ReportLinks links = new ReportLinks(List.of(
+                new ReportLink("VarSome", "https://varsome.com/variant/{assembly}/{chr}:{pos}:{ref}:{alt}"),
+                new ReportLink("Ensembl", "https://{ensemblHost}.ensembl.org/Homo_sapiens/Location/View?r={chr}:{pos}-{end}")
+        ));
+        List<ReportLinks.ResolvedLink> resolved = links.resolve(longDel());
+        VariantEvaluation del = longDel();
+        assertEquals(1, resolved.size());
+        assertEquals("Ensembl", resolved.get(0).getLabel());
+        assertEquals(
+                "https://grch37.ensembl.org/Homo_sapiens/Location/View?r=12:" + del.start() + "-" + del.end(),
+                resolved.get(0).getUrl());
+    }
+
+    @Test
+    void resolveDefaultLinksIncludeRegionForLongDel() {
+        VariantEvaluation del = longDel();
+        List<ReportLinks.ResolvedLink> resolved = ReportLinks.loadDefault().resolve(del);
+        assertTrue(resolved.stream().noneMatch(l -> l.getLabel().equals("VarSome")));
+        assertTrue(resolved.stream().anyMatch(l ->
+                l.getLabel().equals("Ensembl")
+                        && l.getUrl().equals("https://grch37.ensembl.org/Homo_sapiens/Location/View?r=12:"
+                        + del.start() + "-" + del.end())));
+    }
+
+    @Test
+    void resolveUcscRegionTemplate() {
+        VariantEvaluation del = longDel();
+        ReportLinks links = new ReportLinks(List.of(
+                new ReportLink("UCSC", "https://genome.ucsc.edu/cgi-bin/hgTracks?db={ucscDb}&position={chrUcsc}:{pos}-{end}")
+        ));
+        List<ReportLinks.ResolvedLink> resolved = links.resolve(del);
+        assertEquals(1, resolved.size());
+        assertEquals(
+                "https://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position=chr12:" + del.start() + "-" + del.end(),
+                resolved.get(0).getUrl());
+    }
+
+    @Test
     void loadMissingResourceGivesEmptyLinks() {
         assertTrue(ReportLinks.load("/no-such-report-links.yml").getLinks().isEmpty());
     }
@@ -80,6 +154,7 @@ class ReportLinksTest {
     void loadDefaultLoadsBundledLinks() {
         List<ReportLink> links = ReportLinks.loadDefault().getLinks();
         assertTrue(links.stream().anyMatch(link -> link.label().equals("VarSome")));
+        assertTrue(links.stream().anyMatch(link -> link.label().equals("Ensembl")));
         assertTrue(links.stream().anyMatch(link -> link.label().equals("SNPedia")));
     }
 
@@ -87,16 +162,21 @@ class ReportLinksTest {
     void resolveFillsAllPlaceholdersForVariantWithRsId() {
         ReportLinks reportLinks = new ReportLinks(List.of(
                 new ReportLink("VarSome", "https://varsome.com/variant/{assembly}/{chr}:{pos}:{ref}:{alt}"),
+                new ReportLink("Ensembl", "https://{ensemblHost}.ensembl.org/Homo_sapiens/Location/View?r={chr}:{pos}-{end}"),
                 new ReportLink("SNPedia", "https://www.snpedia.com/index.php/Rs{rsId}")
         ));
 
         List<ReportLinks.ResolvedLink> resolved = reportLinks.resolve(variant("rs141235720"));
 
-        assertEquals(2, resolved.size());
+        assertEquals(3, resolved.size());
         assertEquals("VarSome", resolved.get(0).getLabel());
         assertEquals("https://varsome.com/variant/hg19/10:123256215:T:G", resolved.get(0).getUrl());
-        assertEquals("SNPedia", resolved.get(1).getLabel());
-        assertEquals("https://www.snpedia.com/index.php/Rs141235720", resolved.get(1).getUrl());
+        assertEquals("Ensembl", resolved.get(1).getLabel());
+        assertEquals(
+                "https://grch37.ensembl.org/Homo_sapiens/Location/View?r=10:123256215-123256215",
+                resolved.get(1).getUrl());
+        assertEquals("SNPedia", resolved.get(2).getLabel());
+        assertEquals("https://www.snpedia.com/index.php/Rs141235720", resolved.get(2).getUrl());
     }
 
     @Test

@@ -25,16 +25,30 @@ import org.monarchinitiative.exomiser.core.model.pathogenicity.PathogenicityData
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 
+import java.util.List;
+
 /**
- * Reads CADD PHRED scores from a tabix file. All parsing is handled by {@link TabixPathogenicityDao}; this class only
+ * Reads CADD PHRED scores from tabix file(s). All parsing is handled by {@link TabixPathogenicityDao}; this class only
  * supplies the {@link TabixPathogenicitySource#cadd()} preset and its own cache name.
+ * <p>
+ * Multiple SNV and/or indel tabix files may be supplied; for each variant the highest matching PHRED score across the
+ * applicable files is returned as a single {@link org.monarchinitiative.exomiser.core.model.pathogenicity.PathogenicitySource#CADD}
+ * score (official + novel sample scores under one identity).
  *
  * @author Jules Jacobsen <jules.jacobsen@sanger.ac.uk>
  */
 public class CaddDao extends TabixPathogenicityDao {
 
     public CaddDao(TabixDataSource caddInDelTabixDataSource, TabixDataSource caddSnvTabixDataSource) {
-        super(TabixPathogenicitySource.cadd(), caddSnvTabixDataSource, caddInDelTabixDataSource);
+        this(List.of(caddInDelTabixDataSource), List.of(caddSnvTabixDataSource));
+    }
+
+    /**
+     * @param caddInDelTabixDataSources indel tabix sources (order is not significant; max score wins)
+     * @param caddSnvTabixDataSources   SNV tabix sources (order is not significant; max score wins)
+     */
+    public CaddDao(List<TabixDataSource> caddInDelTabixDataSources, List<TabixDataSource> caddSnvTabixDataSources) {
+        super(TabixPathogenicitySource.cadd(), caddSnvTabixDataSources, caddInDelTabixDataSources);
     }
 
     @Caching(cacheable = {

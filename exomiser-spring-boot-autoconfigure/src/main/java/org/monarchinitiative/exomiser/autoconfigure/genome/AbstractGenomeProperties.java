@@ -25,6 +25,7 @@ import org.monarchinitiative.exomiser.core.genome.jannovar.TranscriptSource;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 /**
  * @author Jules Jacobsen <j.jacobsen@qmul.ac.uk>
@@ -45,8 +46,10 @@ public abstract class AbstractGenomeProperties implements GenomeProperties {
     private String variantWhiteListPath = "";
 
     // Optional tabix variant data
-    private String caddSnvPath = "";
-    private String caddInDelPath = "";
+    // CADD paths are lists so official + novel (or multiple versions) can be max-merged under one CADD identity.
+    // A single property value still binds as a one-element list.
+    private List<String> caddSnvPath = List.of();
+    private List<String> caddInDelPath = List.of();
     private String remmPath = "";
     private String dannSnvPath = "";
     private String dannInDelPath = "";
@@ -122,20 +125,20 @@ public abstract class AbstractGenomeProperties implements GenomeProperties {
         this.variantWhiteListPath = variantWhiteListPath;
     }
 
-    public String getCaddSnvPath() {
+    public List<String> getCaddSnvPath() {
         return caddSnvPath;
     }
 
-    public void setCaddSnvPath(String caddSnvPath) {
-        this.caddSnvPath = caddSnvPath;
+    public void setCaddSnvPath(List<String> caddSnvPath) {
+        this.caddSnvPath = caddSnvPath == null ? List.of() : List.copyOf(caddSnvPath);
     }
 
-    public String getCaddInDelPath() {
+    public List<String> getCaddInDelPath() {
         return caddInDelPath;
     }
 
-    public void setCaddInDelPath(String caddInDelPath) {
-        this.caddInDelPath = caddInDelPath;
+    public void setCaddInDelPath(List<String> caddInDelPath) {
+        this.caddInDelPath = caddInDelPath == null ? List.of() : List.copyOf(caddInDelPath);
     }
 
     public String getRemmPath() {

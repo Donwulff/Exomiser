@@ -960,6 +960,166 @@ public class VariantEvaluationTest {
     }
 
     @Test
+    void testToDisplayStringSnvUnchanged() {
+        assertThat(instance.toDisplayString(), equalTo("1-1-C-T"));
+        assertThat(instance.requiresCompactDisplay(), is(false));
+    }
+
+    @Test
+    void testToDisplayStringSymbolicIncludesLength() {
+        VariantEvaluation sv = newBuilder(1, 100, 150, "A", "<DEL>", -50).build();
+        assertThat(sv.toDisplayString(), equalTo("1-100-150-A-<DEL> (50bp)"));
+        assertThat(sv.requiresCompactDisplay(), is(true));
+    }
+
+    @Test
+    void testToDisplayStringLongSequenceDelIsCompact() {
+        // Sequence-resolved multi-kb DEL (Complete Genomics / ROH style) must not dump the REF sequence
+        String longRef = "A" + "T".repeat(679375);
+        VariantEvaluation longDel = newBuilder(12, 52_772_578, 53_451_953, longRef, "A", -679_375).build();
+        assertThat(longDel.requiresCompactDisplay(), is(true));
+        assertThat(longDel.toDisplayString(), equalTo("12-52772578-53451953 (679.3kb DEL)"));
+        // machine-readable toGnomad still contains the full sequence (used by TSV etc.)
+        assertThat(longDel.toGnomad().length() > 100_000, is(true));
+        // html ids stay short and free of angle brackets / full sequence
+        String htmlId = longDel.htmlId();
+        assertThat(htmlId.length() < 80, is(true));
+        assertThat(htmlId.contains("<"), is(false));
+        assertThat(htmlId.contains(">"), is(false));
+        assertThat(htmlId.startsWith("12-52772578-53451953-cl-679375-"), is(true));
+    }
+
+    @Test
+    void testToDisplayStringLongInsIsCompact() {
+        String longAlt = "A" + "G".repeat(1200);
+        VariantEvaluation longIns = newBuilder(1, 100, 100, "A", longAlt, 1200).build();
+        assertThat(longIns.toDisplayString(), equalTo("1-100-100 (1.2kb INS)"));
+    }
+
+    @Test
+    void testHtmlIdIsStableForSameAlleles() {
+        assertThat(instance.htmlId(), equalTo(instance.htmlId()));
+        assertThat(instance.htmlId(), equalTo("1-1-1-cl0-" + Integer.toHexString(("C\0T").hashCode())));
+    }
+
+    @Test
+    void vcfFilterIsDotWhenNoVariantContext() {
+        // default test instance has no VariantContext
+        assertThat(instance.vcfFilter(), equalTo("."));
+    }
+
+    @Test
+    void vcfFilterPassWhenFiltersAppliedAndEmpty() {
+        VariantContext vc = new VariantContextBuilder()
+                .source("test")
+                .chr("1").start(1).stop(1).alleles("C", "T")
+                .passFilters()
+                .make();
+        VariantEvaluation ve = testVariantBuilder().variantContext(vc).build();
+        assertThat(ve.vcfFilter(), equalTo("PASS"));
+    }
+
+    @Test
+    void vcfFilterJoinsFailedFilters() {
+        VariantContext vc = new VariantContextBuilder()
+                .source("test")
+                .chr("1").start(1).stop(1).alleles("C", "T")
+                .filters("VQLOW", "AMBIQUOUS")
+                .make();
+        VariantEvaluation ve = testVariantBuilder().variantContext(vc).build();
+        assertThat(ve.vcfFilter(), equalTo("AMBIQUOUS;VQLOW"));
+        // Non-numeric FILTER tags must not be compared with OGNL != in templates
+        assertThat(ve.hasNonPassVcfFilter(), equalTo(true));
+    }
+
+    @Test
+    void hasNonPassVcfFilterFalseForPassAndMissing() {
+        assertThat(instance.hasNonPassVcfFilter(), equalTo(false));
+        VariantContext pass = new VariantContextBuilder()
+                .source("test")
+                .chr("1").start(1).stop(1).alleles("C", "T")
+                .passFilters()
+                .make();
+        assertThat(testVariantBuilder().variantContext(pass).build().hasNonPassVcfFilter(), equalTo(false));
+    }
+
+    @Test
+    void vcfFilterUnfilteredIsDot() {
+        VariantContext vc = new VariantContextBuilder()
+                .source("test")
+                .chr("1").start(1).stop(1).alleles("C", "T")
+                .unfiltered()
+                .make();
+        VariantEvaluation ve = testVariantBuilder().variantContext(vc).build();
+        assertThat(ve.vcfFilter(), equalTo("."));
+        assertThat(ve.hasNonPassVcfFilter(), equalTo(false));
+    }
+
+    @Test
+    void vcfQualFormatsScoreAndMissing() {
+        assertThat(testVariantBuilder().quality(99.0).build().vcfQual(), equalTo("99"));
+        assertThat(testVariantBuilder().quality(12.3).build().vcfQual(), equalTo("12.3"));
+        // HTSJDK missing QUAL is negative
+        assertThat(testVariantBuilder().quality(-10.0).build().vcfQual(), equalTo("."));
+        assertThat(testVariantBuilder().quality(Double.POSITIVE_INFINITY).build().vcfQual(), equalTo("."));
+    }
+
+    @Test
+    void callQualityDetailsIncludesUsefulFieldsOnly() {
+        htsjdk.variant.variantcontext.Genotype genotype = new htsjdk.variant.variantcontext.GenotypeBuilder("sample")
+                .alleles(List.of(htsjdk.variant.variantcontext.Allele.create("C", true),
+                        htsjdk.variant.variantcontext.Allele.create("T")))
+                .GQ(78)
+                .DP(42)
+                .AD(new int[]{20, 22})
+                .make();
+        VariantContext vc = new VariantContextBuilder()
+                .source("test")
+                .chr("1").start(1).stop(1).alleles("C", "T")
+                .passFilters()
+                .attribute("SVTYPE", "DEL")
+                .attribute("SVLEN", -60032)
+                .attribute("SNPS", 72)
+                .genotypes(genotype)
+                .make();
+        VariantEvaluation ve = testVariantBuilder().variantContext(vc).quality(99.0).build();
+
+        assertThat(ve.genotypeQualityString(), equalTo("78"));
+        assertThat(ve.readDepthString(), equalTo("42"));
+        assertThat(ve.alleleDepthString(), equalTo("20,22"));
+        assertThat(ve.alleleBalanceString(), equalTo("0.52"));
+
+        List<VariantEvaluation.NamedValue> details = ve.callQualityDetails();
+        Map<String, String> byName = new LinkedHashMap<>();
+        for (VariantEvaluation.NamedValue nv : details) {
+            byName.put(nv.getName(), nv.getValue());
+        }
+        assertThat(byName.get("FILTER"), equalTo("PASS"));
+        assertThat(byName.get("QUAL"), equalTo("99"));
+        assertThat(byName.get("GQ"), equalTo("78"));
+        assertThat(byName.get("DP"), equalTo("42"));
+        assertThat(byName.get("AD"), equalTo("20,22"));
+        assertThat(byName.get("AB"), equalTo("0.52"));
+        assertThat(byName.get("SVTYPE"), equalTo("DEL"));
+        assertThat(byName.get("SVLEN"), equalTo("-60032"));
+        assertThat(byName.get("SNPS"), equalTo("72"));
+        // no empty placeholders
+        assertThat(details.stream().noneMatch(d -> d.getValue().equals(".")), is(true));
+    }
+
+    @Test
+    void callQualityDetailsWithoutContextOnlyHasQualIfSet() {
+        // default instance has no VariantContext → no FILTER/GQ/DP; QUAL comes from builder quality
+        assertThat(instance.genotypeQualityString(), equalTo("."));
+        assertThat(instance.vcfFilter(), equalTo("."));
+        List<VariantEvaluation.NamedValue> details = instance.callQualityDetails();
+        assertThat(details.stream().noneMatch(d -> d.getName().equals("FILTER")), is(true));
+        assertThat(details.stream().noneMatch(d -> d.getName().equals("GQ")), is(true));
+        // QUAL is present because the test fixture sets quality=2.2
+        assertThat(details.stream().anyMatch(d -> d.getName().equals("QUAL")), is(true));
+    }
+
+    @Test
     void variantIsNotWhiteListedByDefault() {
         assertThat(instance.isWhiteListed(), is(false));
     }
