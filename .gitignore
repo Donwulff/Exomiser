@@ -6,9 +6,28 @@ distribute.sh
 
 # Local runtime config / run artifacts (machine-specific paths; do not commit).
 # Distribution template stays tracked: exomiser-cli/src/main/resources/application.properties
+# Policy: keep real genomes, extracted data bundles, case YAMLs, and analysis
+# output out of this repository — see AGENTS.md. (Tiny example VCFs under
+# **/src/**/resources/ remain tracked; do not add real sample VCFs anywhere.)
 /application.properties
 /logs/
 /results/
+/cases/
+
+# Payloads / run debris if dropped at repo root (not module test fixtures)
+/*.vcf
+/*.vcf.gz
+/*.vcf.gz.tbi
+/*.bam
+/*.cram
+/*.mv.db
+/*.zip
+/data/*.zip
+/data/*_hg19/
+/data/*_hg38/
+/data/*_phenotype/
+
+
 
 #Java stuff
 *.class
