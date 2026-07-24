@@ -51,18 +51,27 @@ bundles (HTTP downloads were unreliable/corrupt on some networks), with a
 
 Policy for continuing that:
 
-1. **In this repo (`data/`):** version-controlled `*.torrent` files, and the
-   canonical `data/seed-torrents.sh` used to mint them for new `YYMM` releases
-   (update `FILES` / `WEBSEED_BASE`, re-verify Range support on the CDN host).
+1. **In this repo (`data/`):** version-controlled `*.torrent` files and the
+   canonical `data/seed-torrents.sh`. The script auto-discovers
+   `YYMM_{hg19,hg38,phenotype}.zip` under the data volume, probes known CDN
+   bases for a size-matching BEP-19 webseed, and writes only the small
+   `.torrent` files back into `data/`.
 2. **On the data volume:** the actual `.zip` bytes and the running BitTorrent
-   client. Keep an operational copy of the script next to the zips; edit the
-   repo copy first, then mirror.
+   client (`EXOMISER_DATA_DIR`, default `/mnt/GenomicData/Exomiser`). No need
+   to keep a second copy of the script there unless you prefer it for ops.
 3. **Torrent the `.zip`s only — never the extracted trees.** There is no
    official fallback for unpacked directories, infohashes would not match any
    upstream artifact, and serving extracted data adds size without a real
    distribution benefit. Extract locally after download.
-4. Optional extra files (e.g. NCBoost score tabix) may get torrents the same
-   way; still do not commit the payload.
+4. Optional extras (e.g. NCBoost) via `EXTRA_GLOBS` in the script; still do
+   not commit the payload.
+
+```bash
+# after a new release's zips land on the data volume:
+./data/seed-torrents.sh check
+./data/seed-torrents.sh create --release 2602    # or omit --release for all complete sets
+git add data/*.torrent && git commit -m "Torrents for Exomiser data 2602"
+```
 
 Do not commit extracted release directories or multi‑GB zips “for convenience”.
 

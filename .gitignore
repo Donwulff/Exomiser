@@ -26,6 +26,9 @@ distribute.sh
 /data/*_hg19/
 /data/*_hg38/
 /data/*_phenotype/
+# Local mktorrent bootstrap (dpkg-deb -x); not for commit
+/data/.tools/
+/mktorrent_*.deb
 
 
 
