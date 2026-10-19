@@ -743,4 +743,5 @@ suitable for use in downstream computational analyses or manually queried using 
 `jq <https://stedolan.github.io/jq/>`_. The HTML output is most suitable for manual inspection / human use.
 ``HTML_LEGACY`` renders the previous-generation report layout - a denser single page - and is written to
 ``<prefix>.legacy.html``, so it can be requested alongside ``HTML`` for side-by-side comparison.
+Both layouts show variants without transcript annotations in an Unanalysed Variants section.
 Default value: ``[HTML, JSON, PARQUET]``.

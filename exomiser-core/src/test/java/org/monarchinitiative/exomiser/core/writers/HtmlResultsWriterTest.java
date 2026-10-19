@@ -154,6 +154,19 @@ public class HtmlResultsWriterTest {
         assertTrue(testOutFile.toFile().delete());
     }
 
+    @ParameterizedTest
+    @EnumSource(value = OutputFormat.class, names = {"HTML", "HTML_LEGACY"})
+    void bothTemplatesShowUnannotatedVariantsOutsideGeneResults(OutputFormat format) {
+        AnalysisResults results = buildAnalysisResults(Sample.builder().build(), Analysis.builder().build(),
+                List.of(), List.of(unAnnotatedVariantEvaluation1));
+        assertEquals(1, results.unAnnotatedVariantEvaluations().size());
+
+        String output = ResultsWriterFactory.getResultsWriter(format).writeString(results, OutputSettings.builder().build());
+
+        assertTrue(output.contains("Unanalysed Variants"));
+        assertTrue(output.contains(unAnnotatedVariantEvaluation1.toDisplayString()));
+    }
+
     @Test
     public void testWriteTemplateWithUnAnnotatedVariantData() {
         Sample sample = Sample.builder().build();
