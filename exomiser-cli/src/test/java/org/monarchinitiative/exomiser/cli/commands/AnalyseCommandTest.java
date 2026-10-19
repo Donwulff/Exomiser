@@ -230,7 +230,7 @@ class AnalyseCommandTest {
     @Test
     void testIllegalOutputFormatArguments() {
         Throwable error = assertThrows(ParameterException.class, () -> commandLine.parseArgs("--analysis", "src/test/resources/test-analysis-exome.yml", "--output-format", "HTML,FOO,BAR"));
-        assertThat(error.getMessage(), equalTo("Invalid value for option '--output-format' (<outputFormats>): expected one of [HTML, VCF, TSV_GENE, TSV_VARIANT, JSON, PARQUET] (case-insensitive) but was 'FOO'"));
+        assertThat(error.getMessage(), equalTo("Invalid value for option '--output-format' (<outputFormats>): expected one of [HTML, HTML_LEGACY, VCF, TSV_GENE, TSV_VARIANT, JSON, PARQUET] (case-insensitive) but was 'FOO'"));
     }
 
     @Disabled("--output-prefix option has been *deprecated*")

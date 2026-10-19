@@ -52,6 +52,7 @@ public class ResultsWriterFactory {
             case JSON -> new JsonResultsWriter();
             case PARQUET -> new ParquetResultsWriter();
             case HTML -> new HtmlResultsWriter();
+            case HTML_LEGACY -> HtmlResultsWriter.legacy();
         };
     }
 

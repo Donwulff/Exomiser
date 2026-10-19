@@ -44,6 +44,13 @@ class ResultsWriterFactoryTest {
     }
 
     @Test
+    void testGetLegacyHtmlResultsWriter() {
+        OutputFormat outputFormat = OutputFormat.HTML_LEGACY;
+        ResultsWriter result = ResultsWriterFactory.getResultsWriter(outputFormat);
+        assertThat(result, instanceOf(HtmlResultsWriter.class));
+    }
+
+    @Test
     void testGetTsvGeneResults() {
         OutputFormat outputFormat = OutputFormat.TSV_GENE;
         ResultsWriter result = ResultsWriterFactory.getResultsWriter(outputFormat);

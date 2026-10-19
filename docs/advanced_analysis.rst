@@ -737,8 +737,10 @@ Default value: {input-vcf-filename}-exomiser
 
 outputFormats:
 --------------
-Array to define the output formats. can be ``[TSV-GENE]``, ``[TSV-VARIANT]``, ``[VCF]``, ``JSON`` or ``HTML`` or any
-combination like ``[TSV-GENE, TSV-VARIANT, VCF]``. JSON is the most informative output option and suitable for use in
-downstream computational analyses or manually queried using something like `jq <https://stedolan.github.io/jq/>`_. The
-HTML output is most suitable for manual inspection / human use.
-Default value: ``[JSON, HTML]``.
+Array of output formats: ``HTML``, ``HTML_LEGACY``, ``JSON``, ``PARQUET``, ``TSV_GENE``, ``TSV_VARIANT``, or ``VCF``.
+Combine them as needed, for example ``[HTML, HTML_LEGACY, TSV_VARIANT]``. JSON is the most informative output option and
+suitable for use in downstream computational analyses or manually queried using something like
+`jq <https://stedolan.github.io/jq/>`_. The HTML output is most suitable for manual inspection / human use.
+``HTML_LEGACY`` renders the previous-generation report layout - a denser single page - and is written to
+``<prefix>.legacy.html``, so it can be requested alongside ``HTML`` for side-by-side comparison.
+Default value: ``[HTML, JSON, PARQUET]``.

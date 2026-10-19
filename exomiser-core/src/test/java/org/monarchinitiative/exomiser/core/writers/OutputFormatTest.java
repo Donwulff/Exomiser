@@ -63,4 +63,12 @@ public class OutputFormatTest {
         assertThat(OutputFormat.parseFormat("TSV-GENE"), equalTo(OutputFormat.TSV_GENE));
         assertThat(OutputFormat.parseFormat("TSV_GENE"), equalTo(OutputFormat.TSV_GENE));
     }
+
+    @Test
+    void testParseLegacyHtmlFormat() {
+        assertThat(OutputFormat.parseFormat("HTML_LEGACY"), equalTo(OutputFormat.HTML_LEGACY));
+        assertThat(OutputFormat.parseFormat("HTML-LEGACY"), equalTo(OutputFormat.HTML_LEGACY));
+        assertThat(OutputFormat.parseFormat("legacy_html"), equalTo(OutputFormat.HTML_LEGACY));
+        assertThat(OutputFormat.HTML_LEGACY.fileExtension(), equalTo("legacy.html"));
+    }
 }

@@ -38,6 +38,11 @@ import java.util.List;
 public enum OutputFormat {
 
     HTML("html"),
+    /**
+     * The previous-generation HTML report layout (the {@code results} template) which was superseded by
+     * the current {@link #HTML} report. Written alongside it as {@code <prefix>.legacy.html}.
+     */
+    HTML_LEGACY("legacy.html"),
     VCF("vcf"),
     TSV_GENE("genes.tsv"),
     TSV_VARIANT("variants.tsv"),
@@ -64,6 +69,7 @@ public enum OutputFormat {
             case "JSON" -> OutputFormat.JSON;
             case "PARQUET" -> OutputFormat.PARQUET;
             case "HTML" -> OutputFormat.HTML;
+            case "HTML_LEGACY", "HTML-LEGACY", "LEGACY_HTML", "LEGACY-HTML" -> OutputFormat.HTML_LEGACY;
             default -> {
                 logger.info("Unrecognised output format '{}'. Valid options are {} - defaulting to {}", value, List.of(OutputFormat
                         .values()), OutputFormat.HTML);

@@ -309,6 +309,16 @@
             width: 125px;
         }
 
+        a.external-link {
+            margin-left: 0.35rem;
+            white-space: nowrap;
+            font-size: .85rem;
+        }
+
+        .call-quality {
+            margin: .15rem 0 0 0;
+        }
+
         .pheno-match-card .card-body {
             padding: .5rem 0;
         }
@@ -546,12 +556,26 @@
                                                         </span>
                                                     </th:block>
                                                     <div class="variant">
-                                                        <span class="fw-bold d-inline" th:text=" |${variantEvaluation.toGnomad} [${variantEvaluation.genotypeString}]|">chr10:g.123256215T>G [0/1]&nbsp;</span>
+                                                        <span class="fw-bold d-inline" th:text=" |${variantEvaluation.toDisplayString()} [${variantEvaluation.genotypeString}]|">10-123256215-T-G [0/1]&nbsp;</span>
+                                                        <th:block th:if="${reportLinks != null}">
+                                                            <th:block th:with="externalLinks=${reportLinks.resolve(variantEvaluation)}">
+                                                                <a th:each="link: ${externalLinks}"
+                                                                   th:href="${link.url}" th:text="${link.label}"
+                                                                   target="_blank" rel="noopener noreferrer"
+                                                                   class="external-link">VarSome</a>
+                                                            </th:block>
+                                                        </th:block>
                                                     <div class="genescores-section-actions d-inline">
                                                         <button type="button" class="btn btn-outline-secondary btn-copy-igv" data-bs-original-title="Copy IGV to clipboard">Copy IGV</button>
                                                     </div>
                                                     </div>
-                                                    <div class="d-inline" th:if="${variantEvaluation.isSymbolic()}"  th:text=" |${variantEvaluation.changeLengthString}|"> 10 Mb</div>
+                                                    <th:block th:with="callDetails = ${variantEvaluation.callQualityDetails()}">
+                                                        <div class="text-sm call-quality" th:unless="${#lists.isEmpty(callDetails)}"
+                                                             th:classappend="${variantEvaluation.hasNonPassVcfFilter()} ? 'text-warning-emphasis' : 'text-muted'">
+                                                            <span class="me-2" th:each="item : ${callDetails}"
+                                                                  th:text="|${item.name} ${item.value}|">FILTER PASS</span>
+                                                        </div>
+                                                    </th:block>
                                                     <div class="col-sm-12">
                                                         <div class="text-sm" th:if="${#arrays.length(variantEvaluation.transcriptAnnotations) > 0}" th:with="annotation = ${variantEvaluation.transcriptAnnotations[0]}"
                                                              th:switch="${transcriptDb}">
@@ -705,8 +729,15 @@
                                     <div class="col-sm-12">
                                         <span class="label label-danger" th:text="${variantEvaluation.variantEffect}">MISSENSE</span>
                                         <b th:text=" ${variantEvaluation.variantType}"> SNV</b>
-                                        <b th:text=" |${variantEvaluation.toGnomad} [${variantEvaluation.genotypeString}]|"> chr10:g.123256215T>G [0/1]</b>
-                                        <b th:if="${variantEvaluation.isSymbolic()}"  th:text=" |${variantEvaluation.changeLengthString}|"> 10 Mb</b>
+                                        <b th:text=" |${variantEvaluation.toDisplayString()} [${variantEvaluation.genotypeString}]|"> 10-123256215-T-G [0/1]</b>
+                                        <th:block th:if="${reportLinks != null}">
+                                            <th:block th:with="externalLinks=${reportLinks.resolve(variantEvaluation)}">
+                                                <a th:each="link: ${externalLinks}"
+                                                   th:href="${link.url}" th:text="${link.label}"
+                                                   target="_blank" rel="noopener noreferrer"
+                                                   class="external-link">VarSome</a>
+                                            </th:block>
+                                        </th:block>
                                         <th:block th:each="varId: ${variantEvaluation.frequencyData.rsId}"
                                                   th:if="!${#strings.isEmpty(varId)}"
                                                   th:switch="${#strings.substring(varId, 0, 2)}">
@@ -729,6 +760,13 @@
                                             <span th:case="*"
                                                   th:text="${varId}">12345
                                                     </span>
+                                        </th:block>
+                                        <th:block th:with="callDetails = ${variantEvaluation.callQualityDetails()}">
+                                            <div class="text-sm call-quality" th:unless="${#lists.isEmpty(callDetails)}"
+                                                 th:classappend="${variantEvaluation.hasNonPassVcfFilter()} ? 'text-warning-emphasis' : 'text-muted'">
+                                                <span class="me-2" th:each="item : ${callDetails}"
+                                                      th:text="|${item.name} ${item.value}|">FILTER PASS</span>
+                                            </div>
                                         </th:block>
                                     </div>
                                     <div class="col-sm-12" th:if="${variantEvaluation.pathogenicityData.hasClinVarData()}">
@@ -873,8 +911,7 @@
                     <div class="col-sm-12">
                         <span class="label label-danger" th:text="${variantEvaluation.variantEffect}">MISSENSE</span>
                         <!-- This is odd - for some reason Thymeleaf cannot evaluate variantEvaluation.start() -->
-                        <b th:text=" |${variantEvaluation.toGnomad} [${variantEvaluation.genotypeString}]|"> chr10:g.123256215T>G [0/1]</b>
-                        <b th:if="${variantEvaluation.isSymbolic()}"  th:text=" |${variantEvaluation.changeLengthString}|"> 10 Mb</b>
+                        <b th:text=" |${variantEvaluation.toDisplayString()} [${variantEvaluation.genotypeString}]|"> 10-123256215-T-G [0/1]</b>
                         <th:block th:each="rsId: ${variantEvaluation.frequencyData.rsId}"
                                   th:if="${#strings.startsWith(rsId,'rs')}">
                             <a th:href="@{|https://www.ncbi.nlm.nih.gov/snp/${rsId}|}"

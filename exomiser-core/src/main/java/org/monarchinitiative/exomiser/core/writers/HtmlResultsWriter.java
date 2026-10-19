@@ -70,36 +70,54 @@ public class HtmlResultsWriter implements ResultsWriter {
 
     private static final Logger logger = LoggerFactory.getLogger(HtmlResultsWriter.class);
 
+    private static final String DEFAULT_TEMPLATE = "results_bootstrap_5";
+    private static final String LEGACY_TEMPLATE = "results";
+
     private final TemplateEngine templateEngine;
 
     private final ReportLinks reportLinks = ReportLinks.loadDefault();
 
-    private static final OutputFormat OUTPUT_FORMAT = OutputFormat.HTML;
+    private final String templateName;
+    private final OutputFormat outputFormat;
 
     public HtmlResultsWriter() {
+        this(DEFAULT_TEMPLATE, OutputFormat.HTML);
+    }
+
+    private HtmlResultsWriter(String templateName, OutputFormat outputFormat) {
         Locale.setDefault(Locale.UK);
         this.templateEngine = ThymeleafConfig.coreTemplateEngine();
+        this.templateName = templateName;
+        this.outputFormat = outputFormat;
+    }
+
+    /**
+     * @return a writer rendering the previous-generation report layout ({@link OutputFormat#HTML_LEGACY}),
+     * a denser single-page alternative to the current report. Both can be requested from one run.
+     */
+    public static HtmlResultsWriter legacy() {
+        return new HtmlResultsWriter(LEGACY_TEMPLATE, OutputFormat.HTML_LEGACY);
     }
 
     @Override
     public void writeFile(AnalysisResults analysisResults, OutputSettings settings) {
         logger.debug("Writing HTML results");
         Sample sample = analysisResults.sample();
-        Path outFile = settings.makeOutputFilePath(sample.vcfPath(), OUTPUT_FORMAT);
+        Path outFile = settings.makeOutputFilePath(sample.vcfPath(), outputFormat);
         try (BufferedWriter writer = Files.newBufferedWriter(outFile, StandardCharsets.UTF_8)) {
             Context context = buildContext(analysisResults, settings);
-            templateEngine.process("results_bootstrap_5", context, writer);
+            templateEngine.process(templateName, context, writer);
         } catch (IOException ex) {
             logger.error("Unable to write results to file {}", outFile, ex);
         }
-        logger.debug("{} ALL results written to file {}", OUTPUT_FORMAT, outFile);
+        logger.debug("{} ALL results written to file {}", outputFormat, outFile);
     }
 
     @Override
     public String writeString(AnalysisResults analysisResults, OutputSettings settings) {
         logger.debug("Writing HTML results");
         Context context = buildContext(analysisResults, settings);
-        return templateEngine.process("results_bootstrap_5", context);
+        return templateEngine.process(templateName, context);
     }
 
     private Context buildContext(AnalysisResults analysisResults, OutputSettings outputSettings) {

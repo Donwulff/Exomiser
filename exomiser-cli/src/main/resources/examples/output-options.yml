@@ -8,5 +8,7 @@ numGenes: 10
 #outputDirectory: results
 # Filename for the output files. Will default to {input-vcf-filename}-exomiser
 #outputFileName: exomiser-output
-#out-format options: HTML, JSON, TSV_GENE, TSV_VARIANT, VCF (default: HTML)
+#out-format options: HTML, HTML_LEGACY, JSON, PARQUET, TSV_GENE, TSV_VARIANT, VCF (default: HTML, JSON, PARQUET)
+# HTML_LEGACY renders the previous-generation report layout to <prefix>.legacy.html - request it
+# alongside HTML to compare the two
 outputFormats: [ HTML, JSON, TSV_GENE, TSV_VARIANT ]

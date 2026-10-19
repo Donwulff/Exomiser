@@ -26,14 +26,25 @@
 package org.monarchinitiative.exomiser.core.writers;
 
 import de.charite.compbio.jannovar.mendel.ModeOfInheritance;
+import htsjdk.variant.variantcontext.GenotypeBuilder;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
+import org.jsoup.Jsoup;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.monarchinitiative.exomiser.api.v1.OutputProto;
 import org.monarchinitiative.exomiser.core.analysis.Analysis;
 import org.monarchinitiative.exomiser.core.analysis.AnalysisResults;
+import org.monarchinitiative.exomiser.core.analysis.acmg.AcmgAssignment;
+import org.monarchinitiative.exomiser.core.analysis.acmg.AcmgClassification;
+import org.monarchinitiative.exomiser.core.analysis.acmg.AcmgEvidence;
 import org.monarchinitiative.exomiser.core.analysis.sample.Sample;
 import org.monarchinitiative.exomiser.core.filters.*;
+import org.monarchinitiative.exomiser.core.genome.GenomeAssembly;
 import org.monarchinitiative.exomiser.core.genome.TestFactory;
 import org.monarchinitiative.exomiser.core.genome.TestVariantFactory;
 import org.monarchinitiative.exomiser.core.model.Gene;
@@ -46,15 +57,21 @@ import org.monarchinitiative.exomiser.core.model.frequency.FrequencySource;
 import org.monarchinitiative.exomiser.core.model.pathogenicity.*;
 import org.monarchinitiative.exomiser.core.prioritisers.OmimPriorityResult;
 import org.monarchinitiative.exomiser.core.prioritisers.PhivePriority;
+import org.monarchinitiative.exomiser.core.prioritisers.model.Disease;
 import org.monarchinitiative.exomiser.core.prioritisers.service.TestPriorityServiceFactory;
+import org.monarchinitiative.exomiser.core.proto.ProtoParser;
+import org.monarchinitiative.svart.Coordinates;
+import org.monarchinitiative.svart.Strand;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -225,6 +242,109 @@ public class HtmlResultsWriterTest {
         String output = instance.writeString(analysisResults, settings);
         assertTrue(output.contains("Gene Symbol"));
         assertTrue(output.contains("FGFR2"));
+    }
+
+    @Test
+    void bothHtmlFormatsSurviveYamlParsingAndWriteSeparateReports(@TempDir Path outputDir) throws IOException {
+        var proto = ProtoParser.parseFromJsonOrYaml(OutputProto.OutputOptions.newBuilder(), """
+                outputFileName: report
+                outputFormats: [HTML, HTML_LEGACY]
+                """).build();
+        var settings = new OutputSettingsProtoConverter().toDomain(proto.toBuilder()
+                .setOutputDirectory(outputDir.toString()).build());
+        AnalysisResults results = buildAnalysisResults(Sample.builder().build(), Analysis.builder().build(),
+                List.of(fgfr2Gene, shhGene), List.of());
+
+        AnalysisResultsWriter.writeToFile(results, settings);
+
+        String current = Files.readString(outputDir.resolve("report.html"));
+        String legacy = Files.readString(outputDir.resolve("report.legacy.html"));
+        assertEquals(instance.writeString(results, settings), current);
+        assertEquals(HtmlResultsWriter.legacy().writeString(results, settings), legacy);
+        assertFalse(current.equals(legacy));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = OutputFormat.class, names = {"HTML", "HTML_LEGACY"})
+    void bothTemplatesRenderContributingVariantWithAcmgAssignment(OutputFormat format) {
+        VariantEvaluation contributingVariant = TestVariantFactory.buildVariant(10, 123256215, "T", "G", SampleGenotype.het(), 30, 2.2);
+        var context = contributingVariant.variantContext();
+        var filteredContext = new VariantContextBuilder(context).filter("VQLOW")
+                .genotypes(new GenotypeBuilder(context.getGenotype(0)).GQ(78).DP(42).make()).make();
+        contributingVariant = contributingVariant.toBuilder().variantContext(filteredContext).quality(-10).build();
+        contributingVariant.setFrequencyData(FrequencyData.of("rs123456", Frequency.of(FrequencySource.THOUSAND_GENOMES, 0.01f)));
+        contributingVariant.setPathogenicityData(PathogenicityData.of(PolyPhenScore.of(1f)));
+        contributingVariant.setContributesToGeneScoreUnderMode(ModeOfInheritance.AUTOSOMAL_DOMINANT);
+
+        Gene gene = TestFactory.newGeneFGFR2();
+        gene.addVariant(contributingVariant);
+        gene.setCompatibleInheritanceModes(EnumSet.of(ModeOfInheritance.AUTOSOMAL_DOMINANT));
+        AcmgAssignment acmgAssignment = AcmgAssignment.of(contributingVariant, gene.geneIdentifier(),
+                ModeOfInheritance.AUTOSOMAL_DOMINANT, Disease.builder().build(), AcmgEvidence.empty(),
+                AcmgClassification.LIKELY_PATHOGENIC);
+        gene.addGeneScore(new GeneScore(gene.geneIdentifier(), ModeOfInheritance.AUTOSOMAL_DOMINANT, 1.0, 1.0, 1.0, 0.0,
+                List.of(contributingVariant), List.of(), List.of(acmgAssignment)));
+
+        AnalysisResults analysisResults = buildAnalysisResults(Sample.builder().build(), Analysis.builder().build(),
+                List.of(gene), List.of(contributingVariant));
+
+        String output = ResultsWriterFactory.getResultsWriter(format).writeString(analysisResults, OutputSettings.builder().build());
+
+        // the contributing-variant section is driven by the ACMG assignments - check it rendered with the
+        // display string, report links and caller call-quality line
+        assertTrue(output.contains(format == OutputFormat.HTML ? "LIKELY PATHOGENIC" : "LIKELY_PATHOGENIC"));
+        assertTrue(output.contains("10-123256215-T-G"));
+        assertTrue(output.contains("varsome.com"));
+        assertTrue(output.contains("VQLOW"));
+        String renderedText = Jsoup.parse(output).text();
+        assertTrue(renderedText.contains("GQ 78"));
+        assertTrue(renderedText.contains("DP 42"));
+        assertFalse(output.matches("(?s).*?>\\s*-10(?:\\.0+)?\\s*<.*"));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = OutputFormat.class, names = {"HTML", "HTML_LEGACY"})
+    void bothTemplatesRenderLongVariantsWithoutAlleleLinks(OutputFormat format) {
+        String ref = "A" + "T".repeat(100);
+        VariantEvaluation deletion = VariantEvaluation.builder()
+                .variant(GenomeAssembly.HG19.getContigById(10), Strand.POSITIVE,
+                        Coordinates.oneBased(123256215, 123256315), ref, "A", -100)
+                .geneSymbol("FGFR2")
+                .build();
+        Gene gene = TestFactory.newGeneFGFR2();
+        gene.addVariant(deletion);
+        gene.addGeneScore(GeneScore.builder().geneIdentifier(gene.geneIdentifier()).combinedScore(1).build());
+        AnalysisResults results = buildAnalysisResults(Sample.builder().build(), Analysis.builder().build(),
+                List.of(gene), List.of(deletion));
+
+        String output = ResultsWriterFactory.getResultsWriter(format).writeString(results, OutputSettings.builder().build());
+
+        assertTrue(output.contains(deletion.toDisplayString()));
+        assertTrue(output.contains("grch37.ensembl.org/Homo_sapiens/Location/View?r=10:123256215-123256315"));
+        assertFalse(output.contains(ref));
+        assertFalse(output.contains("varsome.com/variant"));
+        assertFalse(output.contains("gnomad.broadinstitute.org/variant"));
+    }
+
+    @Test
+    void testLegacyTemplateRendersVariantDataAndReportLinks() {
+        Sample sample = Sample.builder()
+                .hpoIds(List.of("HP:000001", "HP:000002"))
+                .build();
+        Analysis analysis = Analysis.builder()
+                .addStep(new FrequencyFilter(0.1f))
+                .addStep(new PathogenicityFilter(true))
+                .build();
+        List<Gene> genes = List.of(fgfr2Gene, shhGene);
+        AnalysisResults analysisResults = buildAnalysisResults(sample, analysis, genes, List.of());
+
+        String output = HtmlResultsWriter.legacy().writeString(analysisResults, OutputSettings.builder().build());
+
+        assertTrue(output.contains("FGFR2"));
+        // compact/gnomAD-style display identifier rather than the old hgvsGenome form
+        assertTrue(output.contains("10-123256215-T-G"));
+        // configurable external-information links (report-links.yml)
+        assertTrue(output.contains("varsome.com"));
     }
 
     @Test

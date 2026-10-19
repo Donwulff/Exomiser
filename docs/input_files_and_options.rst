@@ -156,8 +156,8 @@ file:
     # outputDirectory: (optional) (default: '{exomiserDir}/results/')
     outputDirectory: results/
     # outputFileName: (optional) (default: 'input-vcf-name-exomiser')
-	outputFileName: NA12345-exomiser-results
-    # out-format options: HTML, JSON, PARQUET, TSV_GENE, TSV_VARIANT, VCF (default: HTML)
+    outputFileName: NA12345-exomiser-results
+    # out-format options: HTML, HTML_LEGACY, JSON, PARQUET, TSV_GENE, TSV_VARIANT, VCF (default: HTML, JSON, PARQUET)
     outputFormats: [HTML, PARQUET]
 
 
