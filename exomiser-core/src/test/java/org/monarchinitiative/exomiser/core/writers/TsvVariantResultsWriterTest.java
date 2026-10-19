@@ -26,6 +26,13 @@
 package org.monarchinitiative.exomiser.core.writers;
 
 import de.charite.compbio.jannovar.mendel.ModeOfInheritance;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.GenotypeBuilder;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.monarchinitiative.exomiser.core.analysis.AnalysisResults;
@@ -33,6 +40,7 @@ import org.monarchinitiative.exomiser.core.filters.FilterResult;
 import org.monarchinitiative.exomiser.core.filters.FilterType;
 import org.monarchinitiative.exomiser.core.genome.TestFactory;
 import org.monarchinitiative.exomiser.core.genome.TestVariantFactory;
+import org.monarchinitiative.exomiser.core.genome.VariantContextSampleGenotypeConverter;
 import org.monarchinitiative.exomiser.core.model.Gene;
 import org.monarchinitiative.exomiser.core.model.GeneScore;
 import org.monarchinitiative.exomiser.core.model.SampleGenotype;
@@ -45,6 +53,7 @@ import org.monarchinitiative.exomiser.core.model.pathogenicity.PathogenicityScor
 import org.monarchinitiative.exomiser.core.model.pathogenicity.PathogenicitySource;
 import org.monarchinitiative.exomiser.core.prioritisers.OmimPriorityResult;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -61,7 +70,7 @@ public class TsvVariantResultsWriterTest {
 
     private final TsvVariantResultsWriter instance = new TsvVariantResultsWriter();
 
-    private static final String HEADER = "#RANK\tID\tGENE_SYMBOL\tENTREZ_GENE_ID\tMOI\tP-VALUE\tEXOMISER_GENE_COMBINED_SCORE\tEXOMISER_GENE_PHENO_SCORE\tEXOMISER_GENE_VARIANT_SCORE\tEXOMISER_VARIANT_SCORE\tCONTRIBUTING_VARIANT\tWHITELIST_VARIANT\tVCF_ID\tRS_ID\tCONTIG\tSTART\tEND\tREF\tALT\tCHANGE_LENGTH\tQUAL\tFILTER\tGENOTYPE\tFUNCTIONAL_CLASS\tHGVS\tEXOMISER_ACMG_CLASSIFICATION\tEXOMISER_ACMG_EVIDENCE\tEXOMISER_ACMG_DISEASE_ID\tEXOMISER_ACMG_DISEASE_NAME\tCLINVAR_VARIATION_ID\tCLINVAR_PRIMARY_INTERPRETATION\tCLINVAR_STAR_RATING\tGENE_CONSTRAINT_LOEUF\tGENE_CONSTRAINT_LOEUF_LOWER\tGENE_CONSTRAINT_LOEUF_UPPER\tMAX_FREQ_SOURCE\tMAX_FREQ\tALL_FREQ\tMAX_PATH_SOURCE\tMAX_PATH\tALL_PATH\n";
+    private static final String HEADER = "#RANK\tID\tGENE_SYMBOL\tENTREZ_GENE_ID\tMOI\tP-VALUE\tEXOMISER_GENE_COMBINED_SCORE\tEXOMISER_GENE_PHENO_SCORE\tEXOMISER_GENE_VARIANT_SCORE\tEXOMISER_VARIANT_SCORE\tCONTRIBUTING_VARIANT\tWHITELIST_VARIANT\tVCF_ID\tRS_ID\tCONTIG\tSTART\tEND\tREF\tALT\tCHANGE_LENGTH\tQUAL\tFILTER\tGENOTYPE\tFUNCTIONAL_CLASS\tHGVS\tEXOMISER_ACMG_CLASSIFICATION\tEXOMISER_ACMG_EVIDENCE\tEXOMISER_ACMG_DISEASE_ID\tEXOMISER_ACMG_DISEASE_NAME\tCLINVAR_VARIATION_ID\tCLINVAR_PRIMARY_INTERPRETATION\tCLINVAR_STAR_RATING\tGENE_CONSTRAINT_LOEUF\tGENE_CONSTRAINT_LOEUF_LOWER\tGENE_CONSTRAINT_LOEUF_UPPER\tMAX_FREQ_SOURCE\tMAX_FREQ\tALL_FREQ\tMAX_PATH_SOURCE\tMAX_PATH\tALL_PATH\tVCF_FILTER\tVCF_GQ\tVCF_DP\n";
 
     private AnalysisResults buildAnalysisResults() {
 
@@ -125,9 +134,9 @@ public class TsvVariantResultsWriterTest {
                 .build();
 
         String expected = HEADER +
-                "1	10-123256215-T-G_AD	FGFR2	2263	AD	1.0000	1.0000	1.0000	0.9500	0.9500	1	0			10	123256215	123256215	T	G	0	2.2000	PASS	0/1	missense_variant	FGFR2:uc021pzz.1:c.1694A>C:p.(Glu565Ala)	NOT_AVAILABLE					NOT_PROVIDED	0	0.18759\t0.129\t0.278				REVEL	0.95	REVEL=0.95\n"+
-                "1	10-123256214-A-G_AD	FGFR2	2263	AD	1.0000	1.0000	1.0000	0.9500	0.5958	0	0			10	123256214	123256214	A	G	0	2.2000	PASS	0/1	missense_variant	FGFR2:uc021pzz.1:c.1695G>C:p.(Glu565Asp)	NOT_AVAILABLE					NOT_PROVIDED	0	0.18759\t0.129\t0.278	GNOMAD_G_AFR	0.05	GNOMAD_G_AFR=0.05\t\t\t\n"+
-                "2	7-155604800-C-CT_ANY	SHH	6469	ANY	1.0000	0.0000	0.0000	0.0000	1.0000	0	0			7	155604800	155604800	C	CT	1	1.0000	var-effect	0/1	frameshift_variant	SHH:uc003wmk.1:c.16dup:p.(Arg6Lysfs*58)	NOT_AVAILABLE					NOT_PROVIDED	0	0.21546\t0.105\t0.493\t\t\t\t\t\t\n"
+                "1	10-123256215-T-G_AD	FGFR2	2263	AD	1.0000	1.0000	1.0000	0.9500	0.9500	1	0			10	123256215	123256215	T	G	0	2.2000	PASS	0/1	missense_variant	FGFR2:uc021pzz.1:c.1694A>C:p.(Glu565Ala)	NOT_AVAILABLE					NOT_PROVIDED	0	0.18759\t0.129\t0.278				REVEL	0.95	REVEL=0.95\tPASS\t.\t.\n"+
+                "1	10-123256214-A-G_AD	FGFR2	2263	AD	1.0000	1.0000	1.0000	0.9500	0.5958	0	0			10	123256214	123256214	A	G	0	2.2000	PASS	0/1	missense_variant	FGFR2:uc021pzz.1:c.1695G>C:p.(Glu565Asp)	NOT_AVAILABLE					NOT_PROVIDED	0	0.18759\t0.129\t0.278	GNOMAD_G_AFR	0.05	GNOMAD_G_AFR=0.05\t\t\t\tPASS\t.\t.\n"+
+                "2	7-155604800-C-CT_ANY	SHH	6469	ANY	1.0000	0.0000	0.0000	0.0000	1.0000	0	0			7	155604800	155604800	C	CT	1	1.0000	var-effect	0/1	frameshift_variant	SHH:uc003wmk.1:c.16dup:p.(Arg6Lysfs*58)	NOT_AVAILABLE					NOT_PROVIDED	0	0.21546\t0.105\t0.493\t\t\t\t\t\t\tPASS\t.\t.\n"
                 ;
         assertThat(instance.writeString(ModeOfInheritance.ANY, analysisResults, settings), equalTo(expected));
     }
@@ -143,7 +152,58 @@ public class TsvVariantResultsWriterTest {
 
         String expected =
                 HEADER +
-                "1	10-123256215-T-G_AD	FGFR2	2263	AD	1.0000	1.0000	1.0000	0.9500	0.9500	1	0			10	123256215	123256215	T	G	0	2.2000	PASS	0/1	missense_variant	FGFR2:uc021pzz.1:c.1694A>C:p.(Glu565Ala)	NOT_AVAILABLE					NOT_PROVIDED	0	0.18759\t0.129\t0.278				REVEL	0.95	REVEL=0.95\n";
+                "1	10-123256215-T-G_AD	FGFR2	2263	AD	1.0000	1.0000	1.0000	0.9500	0.9500	1	0			10	123256215	123256215	T	G	0	2.2000	PASS	0/1	missense_variant	FGFR2:uc021pzz.1:c.1694A>C:p.(Glu565Ala)	NOT_AVAILABLE					NOT_PROVIDED	0	0.18759\t0.129\t0.278				REVEL	0.95	REVEL=0.95\tPASS\t.\t.\n";
         assertThat(instance.writeString(ModeOfInheritance.ANY, results, settings), equalTo(expected));
     }
+
+    @Test
+    void callerQualityFieldsPreserveMissingValuesAndSampleOrder() throws IOException {
+        var alleles = List.of(Allele.create("T", true), Allele.create("G"));
+        VariantContext context = new VariantContextBuilder()
+                .chr("10").start(123256215).stop(123256215).alleles(alleles)
+                .filters("VQLOW", "LowDepth")
+                .genotypes(new GenotypeBuilder("z-child", alleles).GQ(78).DP(42).make(),
+                        new GenotypeBuilder("a-parent", alleles).make())
+                .make();
+        CSVRecord record = writeQualityRecord(context);
+
+        assertThat(record.get("FILTER"), equalTo("PASS"));
+        assertThat(record.get("VCF_FILTER"), equalTo("LowDepth;VQLOW"));
+        assertThat(record.get("GENOTYPE"), equalTo("0/1:0/1"));
+        assertThat(record.get("VCF_GQ"), equalTo("78:."));
+        assertThat(record.get("VCF_DP"), equalTo("42:."));
+        assertThat(record.get("QUAL"), equalTo("."));
+    }
+
+    @Test
+    void absentCallerQualityFieldsAreDots() throws IOException {
+        VariantContext context = new VariantContextBuilder()
+                .chr("10").start(123256215).stop(123256215).alleles("T", "G")
+                .unfiltered().make();
+        CSVRecord record = writeQualityRecord(context);
+
+        assertThat(record.get("VCF_FILTER"), equalTo("."));
+        assertThat(record.get("VCF_GQ"), equalTo("."));
+        assertThat(record.get("VCF_DP"), equalTo("."));
+        assertThat(record.get("QUAL"), equalTo("."));
+    }
+
+    private CSVRecord writeQualityRecord(VariantContext context) throws IOException {
+        VariantEvaluation variant = TestVariantFactory.buildVariant(10, 123256215, "T", "G", SampleGenotype.het(), 30, 2.2)
+                .toBuilder().variantContext(context).quality(context.getPhredScaledQual())
+                .sampleGenotypes(VariantContextSampleGenotypeConverter.createAlleleSampleGenotypes(context, 0)).build();
+        variant.addFilterResult(FilterResult.pass(FilterType.VARIANT_EFFECT_FILTER));
+        Gene gene = TestFactory.newGeneFGFR2();
+        gene.addVariant(variant);
+        gene.addGeneScore(GeneScore.builder().geneIdentifier(gene.geneIdentifier()).combinedScore(1).build());
+        AnalysisResults results = AnalysisResults.builder().genes(List.of(gene)).build();
+        String tsv = instance.writeString(results, OutputSettings.builder().build());
+        try (CSVParser parser = CSVParser.parse(tsv, CSVFormat.TDF.builder().setHeader().setSkipHeaderRecord(true).build())) {
+            List<CSVRecord> records = parser.getRecords();
+            assertThat(records.size(), equalTo(1));
+            assertThat(records.getFirst().size(), equalTo(parser.getHeaderNames().size()));
+            return records.getFirst();
+        }
+    }
+
 }

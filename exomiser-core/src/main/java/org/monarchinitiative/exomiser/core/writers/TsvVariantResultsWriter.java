@@ -70,7 +70,7 @@ public class TsvVariantResultsWriter implements ResultsWriter {
     public static final CSVFormat EXOMISER_VARIANTS_TSV_FORMAT = CSVFormat.newFormat('\t').builder()
             .setRecordSeparator("\n")
             .setIgnoreSurroundingSpaces(true)
-            .setHeader("#RANK", "ID", "GENE_SYMBOL", "ENTREZ_GENE_ID", "MOI", "P-VALUE", "EXOMISER_GENE_COMBINED_SCORE", "EXOMISER_GENE_PHENO_SCORE", "EXOMISER_GENE_VARIANT_SCORE", "EXOMISER_VARIANT_SCORE", "CONTRIBUTING_VARIANT", "WHITELIST_VARIANT", "VCF_ID", "RS_ID", "CONTIG", "START", "END", "REF", "ALT", "CHANGE_LENGTH", "QUAL", "FILTER", "GENOTYPE", "FUNCTIONAL_CLASS", "HGVS", "EXOMISER_ACMG_CLASSIFICATION", "EXOMISER_ACMG_EVIDENCE", "EXOMISER_ACMG_DISEASE_ID", "EXOMISER_ACMG_DISEASE_NAME", "CLINVAR_VARIATION_ID", "CLINVAR_PRIMARY_INTERPRETATION", "CLINVAR_STAR_RATING", "GENE_CONSTRAINT_LOEUF", "GENE_CONSTRAINT_LOEUF_LOWER", "GENE_CONSTRAINT_LOEUF_UPPER", "MAX_FREQ_SOURCE", "MAX_FREQ", "ALL_FREQ", "MAX_PATH_SOURCE", "MAX_PATH", "ALL_PATH")
+            .setHeader("#RANK", "ID", "GENE_SYMBOL", "ENTREZ_GENE_ID", "MOI", "P-VALUE", "EXOMISER_GENE_COMBINED_SCORE", "EXOMISER_GENE_PHENO_SCORE", "EXOMISER_GENE_VARIANT_SCORE", "EXOMISER_VARIANT_SCORE", "CONTRIBUTING_VARIANT", "WHITELIST_VARIANT", "VCF_ID", "RS_ID", "CONTIG", "START", "END", "REF", "ALT", "CHANGE_LENGTH", "QUAL", "FILTER", "GENOTYPE", "FUNCTIONAL_CLASS", "HGVS", "EXOMISER_ACMG_CLASSIFICATION", "EXOMISER_ACMG_EVIDENCE", "EXOMISER_ACMG_DISEASE_ID", "EXOMISER_ACMG_DISEASE_NAME", "CLINVAR_VARIATION_ID", "CLINVAR_PRIMARY_INTERPRETATION", "CLINVAR_STAR_RATING", "GENE_CONSTRAINT_LOEUF", "GENE_CONSTRAINT_LOEUF_LOWER", "GENE_CONSTRAINT_LOEUF_UPPER", "MAX_FREQ_SOURCE", "MAX_FREQ", "ALL_FREQ", "MAX_PATH_SOURCE", "MAX_PATH", "ALL_PATH", "VCF_FILTER", "VCF_GQ", "VCF_DP")
             .build();
 
     private final DecimalFormat decimalFormat = new DecimalFormat("0.0000");
@@ -153,7 +153,9 @@ public class TsvVariantResultsWriter implements ResultsWriter {
         fields.add(ve.ref());
         fields.add(ve.alt());
         fields.add(ve.changeLength());
-        fields.add(this.decimalFormat.format(ve.phredScore()));
+        // HTSJDK represents a missing VCF QUAL ('.') as a negative PHRED - report it as missing rather
+        // than as a bogus '-10.0000' score.
+        fields.add(".".equals(ve.vcfQual()) ? "." : this.decimalFormat.format(ve.phredScore()));
         fields.add(this.makeFiltersField(modeOfInheritance, ve));
         fields.add(ve.genotypeString());
         fields.add(ve.variantEffect().getSequenceOntologyTerm());
@@ -179,6 +181,11 @@ public class TsvVariantResultsWriter implements ResultsWriter {
         fields.add(maxPath == null ? "" : maxPath.source());
         fields.add(maxPath == null ? "" : maxPath.score());
         fields.add(toVcfPathInfo(pathogenicityData.pathogenicityScores()));
+        // caller call-quality fields (the VCF's own FILTER and per-sample GQ/DP) - the FILTER column above is
+        // Exomiser's filter status, which says nothing about how well the variant was called. '.' when absent.
+        fields.add(ve.vcfFilter());
+        fields.add(ve.genotypeQualityString());
+        fields.add(ve.readDepthString());
         return fields;
     }
 
