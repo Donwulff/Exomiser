@@ -14,6 +14,9 @@ distribute.sh
 /results/
 /cases/
 
+# Exported local agent sessions can contain case details.
+/20??-??-??-??????-*.txt
+
 # Payloads / run debris if dropped at repo root (not module test fixtures)
 /*.vcf
 /*.vcf.gz

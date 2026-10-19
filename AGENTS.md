@@ -1,107 +1,76 @@
-# Repository guidelines (agents & contributors)
+# Repository Guidelines
 
-This is the **Donwulff/Exomiser** software fork of
-[exomiser/Exomiser](https://github.com/exomiser/Exomiser) — Java source, build,
-tests, report templates, and small distribution helpers. It is **not** a place
-to store genomes, VCFs, extracted data bundles, or analysis output.
+## Project Structure
 
-## Keep real data and results out of this repository
+This is the Donwulff/Exomiser fork, a Java 21 Maven project. Read `README.md`
+for fork behaviour; `docs/` contains reStructuredText user documentation.
 
-**Do not commit** any of the following (and do not ask agents to add them):
+- `exomiser-core`: analysis, filters, prioritisers, variant models, DAOs, and writers.
+- `exomiser-spring-boot-autoconfigure`: data paths and Spring wiring; starter/test
+  modules support embedding.
+- `exomiser-cli`, `exomiser-web`, `exomiser-rest-prioritiser`: application entry points.
+- `exomiser-data-genome` and `exomiser-data-phenotype`: build reference bundles.
+- Modules use `src/main/java`, `src/test/java`, and `src/*/resources`.
+  CLI examples are in `exomiser-cli/src/main/resources/examples/`.
 
-| Kind | Examples | Why |
-|------|----------|-----|
-| Reference-data payloads | `*_hg19.zip`, extracted `YYMM_hg19/`, `*.mv.db`, large tabix score files | Multi‑GB public bundles; live on a dedicated data volume |
-| Sequencing / clinical inputs | `*.vcf`, `*.vcf.gz`, BAM/CRAM, PED with real samples | Often sensitive; never belong in git |
-| Case / analysis configs with real samples | Ad‑hoc YAML under `cases/`, patient HPO lists, local paths | Machine- and person-specific |
-| Run output | HTML/TSV/JSON/VCF reports, `results/`, `logs/` | Regenerable; huge; may embed sample detail |
-| Machine-local runtime config | Root `application.properties` with absolute data paths | Template is tracked under `exomiser-cli/src/main/resources/` |
+Pathogenicity changes span core, autoconfiguration, and writers.
+Core HTML templates are `results_bootstrap_5.html` (current) and `results.html`
+(legacy); web has its own `results.html`.
+Variant links use core `report-links.yml`.
 
-What **is** fine in-repo:
+## Build, Test, and Run
 
-- Source, tests, docs, example analysis YAMLs under
-  `exomiser-cli/src/main/resources/examples/`
-- **BitTorrent helpers only**: small `*.torrent` files and scripts under `data/`
-  (see below) — not the zip payloads they describe
-- Gitignored local paths for day-to-day runs (see root `.gitignore`)
-
-`.gitignore` already excludes `/application.properties`, `/logs/`, `/results/`,
-and `/cases/`. If something large or sample-specific still shows up in
-`git status`, treat that as a bug: ignore it, do not stage it.
-
-### Where data and results actually live
-
-On this machine (illustrative; not part of the git tree):
-
-- **Data volume / seeder host:** `/mnt/GenomicData/Exomiser` — release zips,
-  extracted bundles, optional historical results, operational seeder.
-  Agent notes for *that* directory: `/mnt/GenomicData/Exomiser/AGENTS.md`.
-- **Runtime props:** repo-root `application.properties` (gitignored) →
-  `exomiser.data-directory=…`.
-- **Old install / case YAML reference only:** `~/Exomiser` — not this build tree.
-
-Upstream (and this fork) expect a **separate** data directory; one data release
-can serve many software point releases.
-
-## Data distribution: torrents + official zip webseeds
-
-The original fork shipped **`.torrent` files** for the public Exomiser data
-bundles (HTTP downloads were unreliable/corrupt on some networks), with a
-**BEP-19 webseed** back to the official zip URLs so a cold swarm still works.
-
-Policy for continuing that:
-
-1. **In this repo (`data/`):** version-controlled `*.torrent` files and the
-   canonical `data/seed-torrents.sh`. The script auto-discovers
-   `YYMM_{hg19,hg38,phenotype}.zip` under the data volume, probes known CDN
-   bases for a size-matching BEP-19 webseed, and writes only the small
-   `.torrent` files back into `data/`.
-2. **On the data volume:** the actual `.zip` bytes and the running BitTorrent
-   client (`EXOMISER_DATA_DIR`, default `/mnt/GenomicData/Exomiser`). No need
-   to keep a second copy of the script there unless you prefer it for ops.
-3. **Torrent the `.zip`s only — never the extracted trees.** There is no
-   official fallback for unpacked directories, infohashes would not match any
-   upstream artifact, and serving extracted data adds size without a real
-   distribution benefit. Extract locally after download.
-4. Optional extras (e.g. NCBoost) via `EXTRA_GLOBS` in the script; still do
-   not commit the payload.
+Use `./mvnw` with JDK 21. Check `./mvnw -version`; set `JAVA_HOME` if necessary.
+Newer JDKs can fail Mockito/ByteBuddy tests.
 
 ```bash
-# after a new release's zips land on the data volume:
+./mvnw clean install -DskipTests=true          # Build/install all modules
+./mvnw -pl exomiser-cli -am package -DskipTests=true  # Package CLI and dependencies
+./mvnw test -pl exomiser-core                  # Core tests
+./mvnw test -pl exomiser-core -Dtest=ReportLinksTest  # Focused regression
+./mvnw test                                   # Full suite
+java -Xmx4g -jar exomiser-cli/target/exomiser-cli-15.1.0.jar analyse \
+  --analysis /path/to/analysis.yml --spring.config.location=file:./application.properties
+```
+
+Tests use JUnit Jupiter, Mockito, and Hamcrest. Name classes `*Test`; add
+regressions using synthetic/public fixtures. Never enable parallel Surefire:
+MVStore requires exclusive access. JaCoCo has no enforced coverage minimum.
+
+## Coding Conventions
+
+Follow surrounding style: four-space indentation, `UpperCamelCase` classes,
+`lowerCamelCase` members, and `UPPER_SNAKE_CASE` constants. Preserve AGPL headers.
+No global formatter/checker is configured.
+
+## Data and Configuration
+
+Never commit real VCF/BAM/CRAM/PED files, patient configurations, reports, logs,
+reference ZIPs, or databases. `application.properties`, `cases/`, `results/`,
+and `logs/` at the root are gitignored. The properties template is in CLI resources.
+Ignore misplaced payloads; never stage them.
+
+Data lives separately, locally under `/mnt/GenomicData/Exomiser`; consult its
+`AGENTS.md` before operating there. Never search that volume recursively without
+bounds. `~/Exomiser` is an old installation, not this build tree.
+
+`data/` holds small torrents and canonical `seed-torrents.sh` only. Torrent official
+release ZIPs with size-matching BEP-19 webseeds, never extracted trees:
+
+```bash
 ./data/seed-torrents.sh check
-./data/seed-torrents.sh create --release 2602    # or omit --release for all complete sets
-git add data/*.torrent && git commit -m "Torrents for Exomiser data 2602"
+./data/seed-torrents.sh create --release 2602
 ```
 
-Do not commit extracted release directories or multi‑GB zips “for convenience”.
+`EXOMISER_DATA_DIR` selects the payload directory; edit `EXTRA_GLOBS` for optional
+payloads, kept outside Git. Data releases can serve multiple software releases.
 
-## Agent / working notes
+## Commits and Pull Requests
 
-- Prefer **this file** for durable “what belongs in the repo / what not to
-  commit” rules.
-- Deeper local architecture and build notes may live in untracked working
-  files (`CLAUDE.md`, `IDEAS.md`, etc.). Whether those become tracked is a
-  separate decision — do not assume they should be committed.
-- Never run unbounded `find`/`grep` over `/mnt/GenomicData` (multi‑TB volume).
+Use imperative subjects, e.g. “Add configurable report links”. Describe
+behaviour, relevant issues, and validation in PRs. Use synthetic data in screenshots.
+Review staged files for sensitive data. Preserve unrelated working changes.
 
-## Build and test (short)
-
-Use the Maven wrapper and a Mockito-friendly JDK (prefer **21** for tests):
-
-```bash
-./mvnw clean install -DskipTests=true
-./mvnw -pl exomiser-cli -am package -DskipTests=true
-./mvnw test -pl exomiser-core
-```
-
-Do not enable parallel Surefire (MVStore single-open constraint). See module
-docs and `README.md` for product behaviour; fork deltas (DANN/NCBOOST, report
-links, multi-file CADD, call-quality UI) are documented at the top of
-`README.md` / recent commit history.
-
-## Commits
-
-- Stage only source, tests, docs, and small helpers.
-- Never stage `cases/`, `results/`, data zips/databases, or root runtime
-  `application.properties`.
-- Keep messages concise and focused on why the change exists.
+This is the shared guide; `CLAUDE.md` imports it.
+`IDEAS.md` and session exports are local historical context, not an approved
+roadmap or files to commit automatically.
