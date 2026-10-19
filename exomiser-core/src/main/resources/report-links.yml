@@ -12,28 +12,45 @@
 #   {alt}          alternate allele — only set for short sequence alleles
 #   {gene}         gene symbol
 #   {rsId}         numeric dbSNP id (no "rs" prefix - add your own, e.g. Rs{rsId} or rs{rsId})
+#   {clinVarId}    ClinVar variation id — only set for variants with a ClinVar record
+#   {gnomadDataset} gnomad_r2_1 (GRCh37/hg19) or gnomad_r4 (GRCh38/hg38)
 #
 # A link is only shown for a variant when every placeholder it uses has a value for that variant.
-# Allele-based links (VarSome) are therefore omitted for long/symbolic SVs; region links still appear.
-# SNPedia appears only for variants that have an rsId.
+# That is the whole gating mechanism: allele-based links (VarSome, gnomAD variant, Franklin) are
+# omitted for long/symbolic SVs, region links still appear; SNPedia/dbSNP appear only when the
+# variant has an rsId; ClinVar appears only when it has a ClinVar record.
+#
+# 'key: true' marks a link as important enough to show in space-constrained views. The full HTML
+# report renders every link; the web UI report renders only the key ones.
 #
 # NOTE: outbound links disclose which variants are being investigated to third-party sites. Ensure
-# this is acceptable under your data-governance policy before distributing reports.
+# this is acceptable under your data-governance policy before distributing reports. To disable all
+# of them, comment out every entry below (an empty list is valid).
 links:
   - label: VarSome
     url: "https://varsome.com/variant/{assembly}/{chr}:{pos}:{ref}:{alt}"
+    key: true
+  - label: gnomAD
+    url: "https://gnomad.broadinstitute.org/variant/{chr}-{pos}-{ref}-{alt}?dataset={gnomadDataset}"
+    key: true
+  - label: ClinVar
+    url: "https://www.ncbi.nlm.nih.gov/clinvar/variation/{clinVarId}"
+    key: true
   - label: Ensembl
     url: "https://{ensemblHost}.ensembl.org/Homo_sapiens/Location/View?r={chr}:{pos}-{end}"
+  - label: UCSC
+    url: "https://genome.ucsc.edu/cgi-bin/hgTracks?db={ucscDb}&position={chrUcsc}:{pos}-{end}"
   - label: SNPedia
     url: "https://www.snpedia.com/index.php/Rs{rsId}"
 # Further examples - uncomment or add your own:
-#  - label: UCSC
-#    url: "https://genome.ucsc.edu/cgi-bin/hgTracks?db={ucscDb}&position={chrUcsc}:{pos}-{end}"
-#  - label: gnomAD
-#    url: "https://gnomad.broadinstitute.org/variant/{chr}-{pos}-{ref}-{alt}"
 #  - label: gnomAD region
-#    url: "https://gnomad.broadinstitute.org/region/{chr}-{pos}-{end}"
+#    url: "https://gnomad.broadinstitute.org/region/{chr}-{pos}-{end}?dataset={gnomadDataset}"
 #  - label: dbSNP
 #    url: "https://www.ncbi.nlm.nih.gov/snp/rs{rsId}"
 #  - label: Franklin
 #    url: "https://franklin.genoox.com/clinical-db/variant/snp/chr{chr}-{pos}-{ref}-{alt}"
+# DECIPHER is GRCh38-only - only enable this for hg38 analyses, an hg19 position would point at the wrong locus:
+#  - label: DECIPHER
+#    url: "https://www.deciphergenomics.org/search/patients/results?q={chr}:{pos}-{end}"
+#  - label: GeneCards
+#    url: "https://www.genecards.org/cgi-bin/carddisp.pl?gene={gene}"

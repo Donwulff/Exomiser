@@ -21,9 +21,13 @@
 package org.monarchinitiative.exomiser.core.writers;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.monarchinitiative.exomiser.core.genome.GenomeAssembly;
 import org.monarchinitiative.exomiser.core.model.VariantEvaluation;
 import org.monarchinitiative.exomiser.core.model.frequency.FrequencyData;
+import org.monarchinitiative.exomiser.core.model.pathogenicity.ClinVarData;
+import org.monarchinitiative.exomiser.core.model.pathogenicity.PathogenicityData;
 import org.monarchinitiative.svart.CoordinateSystem;
 import org.monarchinitiative.svart.Coordinates;
 import org.monarchinitiative.svart.Strand;
@@ -177,6 +181,65 @@ class ReportLinksTest {
                 resolved.get(1).getUrl());
         assertEquals("SNPedia", resolved.get(2).getLabel());
         assertEquals("https://www.snpedia.com/index.php/Rs141235720", resolved.get(2).getUrl());
+    }
+
+    @Test
+    void resolveKeyLinksReturnsOnlyFlaggedLinks() {
+        ReportLinks reportLinks = new ReportLinks(List.of(
+                new ReportLink("VarSome", "https://varsome.com/variant/{assembly}/{chr}:{pos}:{ref}:{alt}", true),
+                new ReportLink("Ensembl", "https://{ensemblHost}.ensembl.org/Homo_sapiens/Location/View?r={chr}:{pos}-{end}", false)
+        ));
+
+        VariantEvaluation variant = variant("rs141235720");
+        assertEquals(2, reportLinks.resolve(variant).size());
+
+        List<ReportLinks.ResolvedLink> keyLinks = reportLinks.resolveKeyLinks(variant);
+        assertEquals(1, keyLinks.size());
+        assertEquals("VarSome", keyLinks.get(0).getLabel());
+    }
+
+    @Test
+    void defaultKeyLinksAreASubsetOfAllLinks() {
+        ReportLinks reportLinks = ReportLinks.loadDefault();
+        VariantEvaluation variant = variant("rs141235720");
+        List<ReportLinks.ResolvedLink> keyLinks = reportLinks.resolveKeyLinks(variant);
+        assertTrue(!keyLinks.isEmpty() && keyLinks.size() < reportLinks.resolve(variant).size());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"HG19,gnomad_r2_1", "HG38,gnomad_r4"})
+    void defaultGnomadLinkSelectsDatasetForAssembly(GenomeAssembly assembly, String dataset) {
+        VariantEvaluation variant = VariantEvaluation.builder()
+                .variant(assembly.getContigById(10), Strand.POSITIVE, CoordinateSystem.oneBased(), 123256215, "T", "G")
+                .build();
+
+        ReportLinks.ResolvedLink link = ReportLinks.loadDefault().resolveKeyLinks(variant).stream()
+                .filter(resolved -> resolved.getLabel().equals("gnomAD"))
+                .findFirst().orElseThrow();
+
+        assertEquals("https://gnomad.broadinstitute.org/variant/10-123256215-T-G?dataset=" + dataset, link.getUrl());
+    }
+
+    @Test
+    void clinVarLinkOmittedWhenVariantHasNoClinVarRecord() {
+        ReportLinks reportLinks = new ReportLinks(List.of(
+                new ReportLink("ClinVar", "https://www.ncbi.nlm.nih.gov/clinvar/variation/{clinVarId}")
+        ));
+        assertTrue(reportLinks.resolve(variant("rs141235720")).isEmpty());
+    }
+
+    @Test
+    void clinVarLinkResolvesFromClinVarData() {
+        VariantEvaluation variant = variant("rs141235720");
+        variant.setPathogenicityData(PathogenicityData.of(ClinVarData.builder().variationId("12345").build()));
+
+        ReportLinks reportLinks = new ReportLinks(List.of(
+                new ReportLink("ClinVar", "https://www.ncbi.nlm.nih.gov/clinvar/variation/{clinVarId}")
+        ));
+        List<ReportLinks.ResolvedLink> resolved = reportLinks.resolve(variant);
+
+        assertEquals(1, resolved.size());
+        assertEquals("https://www.ncbi.nlm.nih.gov/clinvar/variation/12345", resolved.get(0).getUrl());
     }
 
     @Test

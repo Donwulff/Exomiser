@@ -29,6 +29,14 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
         <link rel='icon' type='image/x-icon' href="favicon.ico" th:href="@{/favicon.ico}"/>
         <link href="https://cdn.jsdelivr.net/webjars/bootstrap/3.3.7-1/css/bootstrap.min.css" th:href="@{/webjars/bootstrap/3.3.7-1/css/bootstrap.min.css}" rel="stylesheet" media="screen"/>
+        <style>
+            a.external-link {
+                margin-left: 0.35rem;
+                white-space: nowrap;
+                font-size: .85rem;
+                font-weight: normal;
+            }
+        </style>
     </head>
     <body>
     <nav class="navbar navbar-default">
@@ -128,8 +136,7 @@
                     <div class="row" th:each="variantEvaluation: ${unAnalysedVarEvals}"> 
                         <div class="col-sm-12">
                             <span class="label label-danger" th:text="${variantEvaluation.variantEffect}">MISSENSE</span>
-                            <b th:text=" |${variantEvaluation.toGnomad} [${variantEvaluation.genotypeString}]|">chr10:g.123256215T>G [0/1]</b>
-                            <b th:if="${variantEvaluation.isSymbolic()}"  th:text=" |${variantEvaluation.changeLengthString}|"> 10 Mb</b>
+                            <b th:text=" |${variantEvaluation.toDisplayString()} [${variantEvaluation.genotypeString}]|">10-123256215-T-G [0/1]</b>
                             <b th:each="frequencyData: ${variantEvaluation.frequencyData}">
                                 <a th:each="rsId: ${#objects.nullSafe(frequencyData.rsId, default)}"
                                    th:href="@{|https://www.ensembl.org/Homo_sapiens/snpview/?source=dbSNP;snp=${rsId}|}" th:text="${rsId}">rs141235720
@@ -435,8 +442,14 @@
                                 <span class="label label-danger"
                                       th:text="${variantEvaluation.variantEffect}">MISSENSE</span>
                                             <b th:text=" ${variantEvaluation.variantType}"> SNV</b>
-                                            <b th:text=" |${variantEvaluation.toGnomad} [${variantEvaluation.genotypeString}]|">chr10:g.123256215T>G [0/1]</b>
-                                            <b th:if="${variantEvaluation.isSymbolic()}"  th:text=" |${variantEvaluation.changeLengthString}|"> 10 Mb</b>
+                                            <b th:text=" |${variantEvaluation.toDisplayString()} [${variantEvaluation.genotypeString}]|">10-123256215-T-G [0/1]</b>
+                                            <th:block th:if="${reportLinks != null}"
+                                                      th:with="externalLinks=${reportLinks.resolveKeyLinks(variantEvaluation)}">
+                                                <a th:each="link: ${externalLinks}"
+                                                   th:href="${link.url}" th:text="${link.label}"
+                                                   target="_blank" rel="noopener noreferrer"
+                                                   class="external-link">VarSome</a>
+                                            </th:block>
                                             <th:block th:each="varId: ${variantEvaluation.frequencyData.rsId}"
                                                       th:if="!${#strings.isEmpty(varId)}"
                                                       th:switch="${#strings.substring(varId, 0, 2)}">
@@ -579,8 +592,14 @@
                                     <div class="col-sm-12">
                                         <span class="label label-danger" th:text="${variantEvaluation.variantEffect}">MISSENSE</span>
                                         <b th:text=" ${variantEvaluation.variantType}"> SNV</b>
-                                        <b th:text=" |${variantEvaluation.toGnomad} [${variantEvaluation.genotypeString}]|">chr10:g.123256215T>G [0/1]</b>
-                                        <b th:if="${variantEvaluation.isSymbolic()}"  th:text=" |${variantEvaluation.changeLengthString}|"> 10 Mb</b>
+                                        <b th:text=" |${variantEvaluation.toDisplayString()} [${variantEvaluation.genotypeString}]|">10-123256215-T-G [0/1]</b>
+                                        <th:block th:if="${reportLinks != null}"
+                                                  th:with="externalLinks=${reportLinks.resolveKeyLinks(variantEvaluation)}">
+                                            <a th:each="link: ${externalLinks}"
+                                               th:href="${link.url}" th:text="${link.label}"
+                                               target="_blank" rel="noopener noreferrer"
+                                               class="external-link">VarSome</a>
+                                        </th:block>
                                         <th:block th:each="varId: ${variantEvaluation.frequencyData.rsId}"
                                                   th:if="!${#strings.isEmpty(varId)}"
                                                   th:switch="${#strings.substring(varId, 0, 2)}">

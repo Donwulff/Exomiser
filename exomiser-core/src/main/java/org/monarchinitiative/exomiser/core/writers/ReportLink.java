@@ -25,8 +25,16 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 /**
  * Definition of a single external-information link shown next to a variant in the HTML report. The
  * {@code url} is a template that may contain placeholders resolved per-variant by {@link ReportLinks}.
+ * <p>
+ * {@code key} marks a link as important enough for space-constrained views (the web UI report renders
+ * only key links; the full HTML report renders all of them).
  *
  * @since 15.1.0
  */
-public record ReportLink(@JsonProperty("label") String label, @JsonProperty("url") String url) {
+public record ReportLink(@JsonProperty("label") String label, @JsonProperty("url") String url,
+                         @JsonProperty("key") boolean key) {
+
+    public ReportLink(String label, String url) {
+        this(label, url, false);
+    }
 }

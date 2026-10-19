@@ -24,6 +24,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import org.monarchinitiative.exomiser.core.genome.GenomeAssembly;
 import org.monarchinitiative.exomiser.core.model.VariantEvaluation;
+import org.monarchinitiative.exomiser.core.model.pathogenicity.ClinVarData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,6 +54,8 @@ import java.util.regex.Pattern;
  *       so allele-based templates (VarSome) are omitted rather than emitting broken URLs</li>
  *   <li>{@code {gene}} — gene symbol</li>
  *   <li>{@code {rsId}} — numeric part of the dbSNP id</li>
+ *   <li>{@code {clinVarId}} — ClinVar variation id; empty when the variant has no ClinVar record</li>
+ *   <li>{@code {gnomadDataset}} — gnomad_r2_1 for hg19, gnomad_r4 for hg38</li>
  * </ul>
  * A link is only emitted when every placeholder it references has a value for that variant.
  * <p>
@@ -112,12 +115,27 @@ public class ReportLinks {
      * references a placeholder that has no value for this variant.
      */
     public List<ResolvedLink> resolve(VariantEvaluation variant) {
+        return resolve(variant, false);
+    }
+
+    /**
+     * @return only the links flagged {@code key: true} in the configuration, resolved for the given variant.
+     * Intended for space-constrained views such as the web UI report, where the full link list would not fit.
+     */
+    public List<ResolvedLink> resolveKeyLinks(VariantEvaluation variant) {
+        return resolve(variant, true);
+    }
+
+    private List<ResolvedLink> resolve(VariantEvaluation variant, boolean keyLinksOnly) {
         if (links.isEmpty()) {
             return List.of();
         }
         Map<String, String> values = placeholderValues(variant);
         List<ResolvedLink> resolved = new ArrayList<>(links.size());
         for (ReportLink link : links) {
+            if (keyLinksOnly && !link.key()) {
+                continue;
+            }
             String url = interpolate(link.url(), values);
             if (url != null) {
                 resolved.add(new ResolvedLink(link.label(), url));
@@ -131,6 +149,7 @@ public class ReportLinks {
         values.put("assembly", variant.genomeAssembly().toString());
         values.put("ensemblHost", ensemblHost(variant.genomeAssembly()));
         values.put("ucscDb", variant.genomeAssembly().toString());
+        values.put("gnomadDataset", variant.genomeAssembly() == GenomeAssembly.HG19 ? "gnomad_r2_1" : "gnomad_r4");
         values.put("chr", variant.contigName());
         values.put("chrUcsc", ucscChrom(variant.contigName()));
         values.put("pos", Integer.toString(variant.start()));
@@ -146,7 +165,17 @@ public class ReportLinks {
         }
         values.put("gene", blankIfPlaceholder(variant.geneSymbol()));
         values.put("rsId", rsIdNumber(variant.frequencyData().getRsId()));
+        values.put("clinVarId", clinVarVariationId(variant));
         return values;
+    }
+
+    /**
+     * @return the ClinVar variation id for this variant, or empty when the variant has no ClinVar record, so that
+     * ClinVar templates are omitted rather than linking to a non-existent variation page.
+     */
+    static String clinVarVariationId(VariantEvaluation variant) {
+        ClinVarData clinVarData = variant.pathogenicityData().clinVarData();
+        return clinVarData.isEmpty() ? "" : clinVarData.variationId();
     }
 
     /**

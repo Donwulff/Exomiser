@@ -97,6 +97,8 @@ public class SubmitJobController {
     @Autowired
     private PriorityService priorityService;
 
+    private final ReportLinks reportLinks = ReportLinks.loadDefault();
+
     @GetMapping(value = SUBMIT_PAGE)
     public String submit() {
         return SUBMIT_PAGE;
@@ -106,7 +108,7 @@ public class SubmitJobController {
     public String submit(
             @RequestParam(value = "vcf") MultipartFile vcfFile,
             @RequestParam(value = "ped", required = false) MultipartFile pedFile,
-            @RequestParam(value = "proband", required = false) String proband,
+            @RequestParam(value = "proband", required = false, defaultValue = "") String proband,
             @RequestParam(value = "disease", required = false) String diseaseId,
             @RequestParam(value = "phenotypes", required = false) List<String> phenotypes,
             @RequestParam(value = "min-call-quality", required = false, defaultValue = "0") Float minimumQuality,
@@ -353,6 +355,9 @@ public class SubmitJobController {
         model.addAttribute("variantRankComparator", new VariantEvaluation.RankBasedComparator());
         model.addAttribute("pValueFormatter", new HtmlResultsWriter.ScientificDecimalFormat("0.0E0"));
         model.addAttribute("conflictingInterpretationsFormatter", new HtmlResultsWriter.ConflictingInterpretationsFormatter());
+        // configurable external-information links (report-links.yml). This layout has far less room than the
+        // standalone HTML report, so the template renders only the links flagged 'key: true'.
+        model.addAttribute("reportLinks", reportLinks);
     }
 
     private int numGenesPassedFilters(List<Gene> genes) {
@@ -408,7 +413,7 @@ public class SubmitJobController {
 
     private Path createPathFromMultipartFile(MultipartFile multipartFile, String suffix) {
         Path tempDirPath = Paths.get(System.getProperty("java.io.tmpdir"));
-        if (!multipartFile.isEmpty()) {
+        if (multipartFile != null && !multipartFile.isEmpty()) {
             logger.info("Uploading multipart file: {}", multipartFile.getOriginalFilename());
             try {
                 Path path = Files.createTempFile(tempDirPath, "exomiser-", suffix);
