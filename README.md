@@ -1,3 +1,77 @@
+About this fork
+===============
+
+This is a fork of [exomiser/Exomiser](https://github.com/exomiser/Exomiser), tracking upstream 15.1.0. Everything below
+this section is upstream's own README. The additions here are aimed at **comparing pathogenicity sources** and at making
+the reports usable for manual triage; nothing changes how upstream's scoring, filtering or prioritisation works unless a
+new source is explicitly enabled.
+
+**Extra pathogenicity data sources, configured rather than coded.** Tabix-indexed per-base score files are read by one
+generic DAO (`TabixPathogenicityDao`) driven by a `TabixPathogenicitySource` description - file paths, score column,
+exact-match vs range-max lookup, applicability. CADD and ReMM are presets of that mechanism, and two further sources ship
+with it:
+
+- [DANN](https://pubmed.ncbi.nlm.nih.gov/25338716/) ([data](https://cbcl.ics.uci.edu/public_data/DANN/)) - CADD-style,
+  SNVs and indels. Set `exomiser.hg19.dann-snv-path` and `exomiser.hg19.dann-in-del-path` in `application.properties`.
+- [NCBoost](https://pubmed.ncbi.nlm.nih.gov/30744685/) ([data](https://github.com/RausellLab/NCBoost)) - ReMM-style
+  non-coding, an indel taking the highest score spanned by the deleted bases. Set `exomiser.hg19.ncboost-path`.
+
+Adding another tabix source is a preset plus a property, not a new DAO. `PathogenicitySource` gained `DANN` and
+`NCBOOST`; both must be listed in the analysis to have any effect.
+
+**Multiple score files per source.** A CADD path may be given as an indexed list, and the highest raw PHRED across the
+files wins, so official prescored data and locally scored novel variants can be combined under one source:
+
+```properties
+exomiser.hg19.cadd-in-del-path[0]=/path/to/official/InDels.tsv.gz
+exomiser.hg19.cadd-in-del-path[1]=/path/to/sample.novel.cadd.tsv.gz
+```
+
+**Configurable external-information links in the HTML report.** `report-links.yml` defines label plus URL template;
+placeholders (`{assembly}`, `{chr}`, `{pos}`, `{end}`, `{ref}`, `{alt}`, `{gene}`, `{rsId}`, `{clinVarId}`, Ensembl/UCSC
+host and contig forms, `{gnomadDataset}`) are filled per variant. Links are omitted when a required value is unavailable:
+allele links disappear for long or symbolic alleles while region links remain, SNPedia appears only with an rsId, and
+ClinVar only with a ClinVar record. VarSome, gnomAD, ClinVar, Ensembl, UCSC and SNPedia are configured by default; edit
+`exomiser-core/src/main/resources/report-links.yml` and rebuild to change them. gnomAD links select an assembly-compatible
+dataset (v2 for hg19, v4 for hg38). Links marked `key: true` appear in the web UI.
+
+**Call quality from the caller's VCF.** The report shows the VCF `FILTER`, `QUAL` and `GQ` alongside each variant, with
+an expandable panel for `DP`/`AD`/`AB`, an informative genotype `FT`, and `SVTYPE`/`SVLEN`, so a low-quality or filtered
+call is visible while triaging rather than only after going back to the VCF. `variants.tsv` includes caller filter,
+genotype quality, and depth in trailing `VCF_FILTER`, `VCF_GQ`, and `VCF_DP` columns; `QUAL` retains site quality.
+Missing values are `.` and sample values are colon-separated in genotype order. The existing `FILTER` column remains
+Exomiser's own filter status. This makes provisional analysis of low-quality or filtered variants practical.
+
+**Long variants stay readable.** Sequence-resolved multi-kb events are displayed as `12-52772578-53451953 (679.3kb DEL)`
+instead of dumping the full REF into labels, element ids and URLs. Machine-readable identifiers in TSV/VCF/JSON output
+are unchanged.
+
+**Both report layouts are available.** `HTML` renders the current report; `HTML_LEGACY` renders the previous-generation
+layout to `<prefix>.legacy.html`, and both can be requested from one run. Both show variants without transcript
+annotations in an **Unanalysed Variants** section.
+
+**Torrents for data releases.** `data/` holds `.torrent` files for the release bundles, with the official download URLs
+as webseeds, plus `data/seed-torrents.sh` which mints them. No genomic data is kept in the repository itself.
+
+Notes and caveats
+-----------------
+
+- Outbound report links disclose which variants are being investigated to third-party sites. This applies to upstream's
+  links as well as the ones added here. Make sure that is acceptable under your own data-governance rules before
+  distributing reports; the link set is configuration, so it can be trimmed or emptied.
+- Enabling several pathogenicity sources biases results towards pathogenicity, because Exomiser takes the highest score
+  available and each additional source is another chance of a high one. Upstream applies a fixed per-source transform
+  before taking that maximum; there is no empirical calibration making scores from different sources comparable.
+- The score distribution across sources is skewed, and predictably so by functional class - most sources also cover only
+  part of the genome. The per-source scores for every reported variant are in the `ALL_PATH` column of `variants.tsv` if
+  you want to look at this for your own data.
+- DANN has not been updated since 2015, while [CADD 1.6](https://cadd.gs.washington.edu/static/ReleaseNotes_CADD_v1.6.pdf)
+  onwards incorporates MMSplice and SpliceAI annotations, addressing
+  [criticism](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5097698/) of its non-coding performance. DANN and NCBoost are
+  carried here for comparison, not as a recommendation over newer sources.
+- Computing missing NCBoost scores requires annovar, which is only available to academic users. The precomputed values
+  cover non-coding positions within a kilobase of the transcription start or end sites of known genes.
+
 The Exomiser - A Tool to Annotate and Prioritize Exome Variants
 ===============================================================
 
